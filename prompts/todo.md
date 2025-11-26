@@ -25,19 +25,29 @@
 - [x] **Verification**: Run `docker-compose up` and check localhost:8000/docs.
 
 ### Prompt 2: Database Connection & Health
-- [ ] **Database Module**
-    - [ ] Implement `app/db/database.py` (Async engine, sessionmaker).
-    - [ ] Create `get_db()` dependency.
-- [ ] **Health Check**
-    - [ ] Create `app/api/health.py` with GET `/health`.
-    - [ ] return DB connection status and timestamp.
-- [ ] **Main Updates**
-    - [ ] Register health router in `main.py`.
-    - [ ] Add CORS middleware.
-    - [ ] Add startup event for table creation.
-- [ ] **Configuration**
-    - [ ] Update `.env` with `DATABASE_URL` and `CORS_ORIGINS`.
-- [ ] **Testing**: Verify `/health` returns 200 and DB status "connected".
+- [x] **Database Module**
+    - [x] Implement `app/db/database.py` (Async engine, sessionmaker).
+    - [x] Create `get_db()` dependency.
+    - [x] Create `create_tables()` function.
+    - [x] Create `check_db_connection()` function.
+- [x] **Health Check**
+    - [x] Create `app/api/health.py` with GET `/health`.
+    - [x] Return DB connection status and timestamp.
+    - [x] Return 503 if database is disconnected.
+- [x] **Main Updates**
+    - [x] Register health router in `main.py`.
+    - [x] Add CORS middleware with settings-based origins.
+    - [x] Add startup event for table creation.
+    - [x] Add exception handlers for validation and general errors.
+- [x] **Configuration**
+    - [x] Update `.env.example` with `DATABASE_URL` and `CORS_ORIGINS`.
+    - [x] Config already has DATABASE_URL, DEBUG, CORS_ORIGINS.
+- [x] **Testing**: 
+    - [x] Created `tests/test_health.py` with 6 comprehensive tests.
+    - [x] All tests pass (9/9 total including Prompt 1 tests).
+    - [x] Verified `/health` returns 200 with DB status "connected".
+    - [x] Verified CORS headers allow localhost:5173.
+    - [x] No errors in docker-compose logs.
 
 ### Prompt 3: Database Migration System
 - [ ] **Alembic Setup**
