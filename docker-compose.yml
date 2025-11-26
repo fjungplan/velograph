@@ -13,7 +13,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cycling"]
+      # Explicitly check the configured database; avoid defaulting to user DB name
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\" -h localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
