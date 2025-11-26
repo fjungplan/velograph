@@ -5,6 +5,11 @@ from fastapi.exceptions import RequestValidationError
 from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.api.health import router as health_router
+from app.core.exceptions import (
+    NodeNotFoundException,
+    DuplicateEraException,
+    ValidationException as DomainValidationException,
+)
 from app.db.database import create_tables
 import logging
 
@@ -74,6 +79,22 @@ async def general_exception_handler(request: Request, exc: Exception):
             "message": str(exc) if settings.DEBUG else "An error occurred",
         },
     )
+
+
+# Domain-specific exception handlers
+@app.exception_handler(NodeNotFoundException)
+async def node_not_found_handler(request: Request, exc: NodeNotFoundException):
+    return JSONResponse(status_code=exc.status_code, content=exc.to_dict())
+
+
+@app.exception_handler(DuplicateEraException)
+async def duplicate_era_handler(request: Request, exc: DuplicateEraException):
+    return JSONResponse(status_code=exc.status_code, content=exc.to_dict())
+
+
+@app.exception_handler(DomainValidationException)
+async def domain_validation_handler(request: Request, exc: DomainValidationException):
+    return JSONResponse(status_code=exc.status_code, content=exc.to_dict())
 
 
 # Include routers

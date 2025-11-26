@@ -74,16 +74,16 @@
 ## Phase 1: Core Data Model
 
 ### Prompt 4: Team Era Model
-- [ ] **Migration**
-    - [ ] Create migration `002_add_team_era`.
-    - [ ] Add columns: `season_year`, `registered_name`, `uci_code`, `tier_level`.
-- [ ] **Model**
-    - [ ] Create `TeamEra` model with relationships.
-    - [ ] Add validations (UCI code format, tier level).
-- [ ] **Service Layer**
-    - [ ] Create `TeamService` with methods: `create_era`, `get_node_with_eras`.
-    - [ ] Implement custom exceptions (`NodeNotFound`, `DuplicateEra`).
-- [ ] **Testing**: Test constraint violations and cascade deletes.
+- [x] **Migration**
+    - [x] Create migration `002_add_team_era`.
+    - [x] Add columns: `season_year`, `registered_name`, `uci_code`, `tier_level`.
+- [x] **Model**
+    - [x] Create `TeamEra` model with relationships.
+    - [x] Add validations (UCI code format, tier level).
+- [x] **Service Layer**
+    - [x] Create `TeamService` with methods: `create_era`, `get_node_with_eras`.
+    - [x] Implement custom exceptions (`NodeNotFound`, `DuplicateEra`).
+- [x] **Testing**: Test constraint violations and cascade deletes.
 
 ### Prompt 5: Lineage Event Model
 - [ ] **Migration**
