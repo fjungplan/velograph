@@ -1,4 +1,5 @@
-# Cycling Team Lineage Timeline - Implementation Checklist
+# Velograph - Implementation Checklist
+### The Cycling Team Lineage Timeline
 
 ## Phase 0: Foundation
 
@@ -86,28 +87,33 @@
 - [x] **Testing**: Test constraint violations and cascade deletes.
 
 ### Prompt 5: Lineage Event Model
-- [ ] **Migration**
-    - [ ] Create migration `003_add_lineage_event`.
-    - [ ] Define Enum: `LEGAL_TRANSFER`, `SPIRITUAL_SUCCESSION`, `MERGE`, `SPLIT`.
-- [ ] **Model**
-    - [ ] Create `LineageEvent` model.
-    - [ ] Add logic: `is_merge()`, `is_split()`.
-- [ ] **Service Layer**
-    - [ ] Create `LineageService`.
-    - [ ] Implement validation logic (prevent circular refs, check years).
-- [ ] **Testing**: Test lineage traversal (predecessors/successors).
+- [x] **Migration**
+    - [x] Create migration `003_add_lineage_event`.
+    - [x] Define Enum: `LEGAL_TRANSFER`, `SPIRITUAL_SUCCESSION`, `MERGE`, `SPLIT`.
+- [x] **Model**
+    - [x] Create `LineageEvent` model.
+    - [x] Add logic: `is_merge()`, `is_split()`.
+    - [x] Add canonicalization logic (auto-downgrade single-leg MERGE/SPLIT to LEGAL_TRANSFER).
+- [x] **Service Layer**
+    - [x] Create `LineageService`.
+    - [x] Implement validation logic (prevent circular refs, check years).
+    - [x] Implement canonicalization for structural event integrity.
+- [x] **Testing**: Test lineage traversal (predecessors/successors).
+- [x] **Documentation**: Added USER_GUIDE.md explaining canonicalization behavior.
 
 ### Prompt 6: Sponsor Data Model
-- [ ] **Migration**
-    - [ ] Create migration `004_add_sponsors`.
-    - [ ] Tables: `sponsor_master`, `sponsor_brand`, `team_sponsor_link`.
-- [ ] **Models**
-    - [ ] Implement sponsor models.
-    - [ ] Add hex color validation regex.
-- [ ] **Service Layer**
-    - [ ] Create `SponsorService`.
-    - [ ] Implement `validate_era_sponsors` (ensure prominence sums to <= 100%).
-- [ ] **Testing**: Verify Jersey composition logic and prominence constraints.
+- [x] **Migration**
+    - [x] Create migration `004_add_sponsors`.
+    - [x] Tables: `sponsor_master`, `sponsor_brand`, `team_sponsor_link`.
+- [x] **Models**
+    - [x] Implement sponsor models.
+    - [x] Add hex color validation regex (model-level via `@validates`).
+- [x] **Service Layer**
+    - [x] Create `SponsorService`.
+    - [x] Implement `validate_era_sponsors` (ensure prominence sums to <= 100%).
+- [x] **Testing**: Verify Jersey composition logic and prominence constraints (unit + integration).
+
+✅ Status: Implemented and verified. All sponsor tests pass on SQLite; Postgres CI job applies Alembic migrations and runs the full suite.
 
 ---
 

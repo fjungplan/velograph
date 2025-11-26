@@ -100,3 +100,9 @@ async def isolated_session(isolated_engine) -> AsyncGenerator[AsyncSession, None
     maker = async_sessionmaker(isolated_engine, class_=AsyncSession, expire_on_commit=False)
     async with maker() as session:
         yield session
+
+
+@pytest_asyncio.fixture
+async def db_session(isolated_session) -> AsyncGenerator[AsyncSession, None]:
+    """Alias for isolated_session for convenience."""
+    yield isolated_session

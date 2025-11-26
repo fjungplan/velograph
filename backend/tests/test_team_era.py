@@ -1,7 +1,8 @@
 """Tests for TeamEra model and TeamService logic."""
 import uuid
 import pytest
-from sqlalchemy import select, text
+import sqlalchemy as sa
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.models.team import TeamNode, TeamEra
@@ -12,10 +13,12 @@ from app.core.exceptions import DuplicateEraException, ValidationException, Node
 @pytest.mark.asyncio
 async def test_team_era_table_exists(isolated_engine):
     async with isolated_engine.connect() as conn:
-        result = await conn.execute(
-            text("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name='team_era')")
-        )
-        assert result.scalar() is True
+        def _has_table(sync_conn):
+            insp = sa.inspect(sync_conn)
+            return insp.has_table("team_era")
+
+        exists = await conn.run_sync(_has_table)
+        assert exists is True
 
 
 @pytest.mark.asyncio

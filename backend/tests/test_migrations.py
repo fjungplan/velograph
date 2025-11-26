@@ -4,7 +4,8 @@ Tests for database migrations and TeamNode model.
 import pytest
 import uuid
 from datetime import datetime
-from sqlalchemy import text, select
+import sqlalchemy as sa
+from sqlalchemy import select
 from app.models.team import TeamNode
 from app.db.database import async_session_maker
 
@@ -13,46 +14,55 @@ from app.db.database import async_session_maker
 async def test_team_node_table_exists(isolated_engine):
     """Table should exist after migration (fresh engine)."""
     async with isolated_engine.connect() as conn:
-        result = await conn.execute(
-            text(
-                "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name='team_node')"
-            )
-        )
-        assert result.scalar() is True
+        def _has_table(sync_conn):
+            insp = sa.inspect(sync_conn)
+            return insp.has_table("team_node")
+
+        exists = await conn.run_sync(_has_table)
+        assert exists is True
 
 
 @pytest.mark.asyncio
 async def test_team_node_table_structure(isolated_engine):
     """Column names and nullability should match expectations."""
     async with isolated_engine.connect() as conn:
-        result = await conn.execute(
-            text(
-                """
-                SELECT column_name, data_type, is_nullable
-                FROM information_schema.columns
-                WHERE table_name='team_node'
-                ORDER BY ordinal_position
-                """
-            )
-        )
-        columns = {row[0]: {"type": row[1], "nullable": row[2]} for row in result}
+        # Use SQLAlchemy's inspector for cross-database compatibility
+        def _get_columns(sync_conn):
+            insp = sa.inspect(sync_conn)
+            return insp.get_columns("team_node")
+
+        cols = await conn.run_sync(_get_columns)
+        columns = {c["name"]: {"nullable": c.get("nullable", True)} for c in cols}
+
         for name in ["node_id", "founding_year", "dissolution_year", "created_at", "updated_at"]:
             assert name in columns
-        assert columns["node_id"]["nullable"] == "NO"
-        assert columns["founding_year"]["nullable"] == "NO"
-        assert columns["dissolution_year"]["nullable"] == "YES"
-        assert columns["created_at"]["nullable"] == "NO"
-        assert columns["updated_at"]["nullable"] == "NO"
+
+        # Inspector returns booleans for nullability across dialects
+        assert columns["node_id"]["nullable"] is False
+        assert columns["founding_year"]["nullable"] is False
+        assert columns["dissolution_year"]["nullable"] is True
+        assert columns["created_at"]["nullable"] is False
+        assert columns["updated_at"]["nullable"] is False
 
 
 @pytest.mark.asyncio
 async def test_team_node_indexes_exist(isolated_engine):
-    """Index names should be present."""
+    """Index names should be present (PostgreSQL migration run).
+
+    Note: In this test suite we create tables via Base.metadata.create_all on
+    SQLite for speed. That path doesn't create the Alembic-named indexes.
+    Therefore, only enforce index name checks on PostgreSQL dialects where
+    migrations are applied with explicit names.
+    """
     async with isolated_engine.connect() as conn:
-        result = await conn.execute(
-            text("SELECT indexname FROM pg_indexes WHERE tablename='team_node'")
-        )
-        indexes = {row[0] for row in result}
+        def _get_index_names_and_dialect(sync_conn):
+            insp = sa.inspect(sync_conn)
+            return sync_conn.dialect.name, [idx["name"] for idx in insp.get_indexes("team_node")]
+
+        dialect, names = await conn.run_sync(_get_index_names_and_dialect)
+        if dialect != "postgresql":
+            pytest.skip("Index name assertions are Postgres-specific; SQLite + create_all doesn't include them.")
+        indexes = set(names)
         assert "idx_team_node_founding" in indexes
         assert "idx_team_node_dissolution" in indexes
 

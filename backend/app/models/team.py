@@ -5,7 +5,7 @@ of a team (TeamEra). TeamEra captures season-specific metadata while TeamNode
 represents the enduring legal/managerial entity across rebrands.
 """
 import uuid
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 from sqlalchemy import (
     Integer,
     CheckConstraint,
@@ -17,6 +17,9 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, validates, relationship
 from app.db.base import Base, TimestampMixin
 from app.db.types import GUID
+
+if TYPE_CHECKING:
+    from app.models.sponsor import TeamSponsorLink
 
 
 class TeamNode(Base, TimestampMixin):
@@ -107,7 +110,14 @@ class TeamEra(Base, TimestampMixin):
     source_origin: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     is_manual_override: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
+    # Relationships
     node: Mapped[TeamNode] = relationship("TeamNode", back_populates="eras")
+    sponsor_links: Mapped[List["TeamSponsorLink"]] = relationship(
+        "TeamSponsorLink",
+        back_populates="era",
+        cascade="all, delete-orphan",
+        order_by="TeamSponsorLink.rank_order"
+    )
 
     __table_args__ = (
         UniqueConstraint("node_id", "season_year", name="uq_node_year"),
@@ -152,6 +162,20 @@ class TeamEra(Base, TimestampMixin):
     def display_name(self) -> str:
         """Formatted display name for UI consumption."""
         return f"{self.registered_name} ({self.uci_code})" if self.uci_code else self.registered_name
+
+    @property
+    def sponsors_ordered(self) -> List["TeamSponsorLink"]:
+        """Return sponsor links sorted by rank_order."""
+        return sorted(self.sponsor_links, key=lambda link: link.rank_order)
+
+    def validate_sponsor_total(self) -> bool:
+        """Check if the sum of sponsor prominence percentages is <= 100.
+        
+        Returns:
+            True if total is valid (<= 100%), False otherwise.
+        """
+        total = sum(link.prominence_percent for link in self.sponsor_links)
+        return total <= 100
 
     def __repr__(self) -> str:  # pragma: no cover - debugging helper
         return (

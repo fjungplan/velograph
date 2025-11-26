@@ -1,7 +1,7 @@
 # Cycling Team Lineage - Backend Makefile
 # Provides convenient shortcuts for common development tasks
 
-.PHONY: help migrate migrate-rollback migrate-create test shell
+.PHONY: help migrate migrate-rollback migrate-create test shell alembic-upgrade-local
 
 help:
 	@echo "Available commands:"
@@ -34,3 +34,9 @@ test:
 shell:
 	@echo "Opening backend container shell..."
 	docker-compose exec backend sh
+
+# Run Alembic migrations against a locally reachable DATABASE_URL
+# Requires env var DATABASE_URL to be set, or a .env file resolvable by Alembic env.py
+alembic-upgrade-local:
+	@echo "Running Alembic migrations locally (using DATABASE_URL) ..."
+	alembic upgrade head

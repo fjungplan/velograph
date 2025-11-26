@@ -1,0 +1,75 @@
+name: Backend Postgres Tests
+
+on:
+  push:
+    branches: [ main, "**" ]
+  pull_request:
+    branches: [ "**" ]
+
+jobs:
+  postgres-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: cycling_lineage
+          POSTGRES_USER: cycling
+          POSTGRES_PASSWORD: cycling
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U cycling -d cycling_lineage" 
+          --health-interval=10s 
+          --health-timeout=5s 
+          --health-retries=10
+
+    env:
+      DATABASE_URL: postgresql+asyncpg://cycling:cycling@localhost:5432/cycling_lineage
+      PIP_DISABLE_PIP_VERSION_CHECK: 1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Wait for Postgres to be ready
+        run: |
+          python - <<'PY'
+          import time, sys
+          import psycopg2
+          for i in range(60):
+              try:
+                  conn = psycopg2.connect(dbname='cycling_lineage', user='cycling', password='cycling', host='localhost', port=5432)
+                  conn.close()
+                  print('Postgres is ready')
+                  sys.exit(0)
+              except Exception as e:
+                  print('Waiting for Postgres...', e)
+                  time.sleep(2)
+          sys.exit(1)
+          PY
+
+      - name: Run Alembic migrations
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+        run: |
+          alembic upgrade head
+
+      - name: Run backend tests (full suite)
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+        run: |
+          pytest tests/ -v --tb=short

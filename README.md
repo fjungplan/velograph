@@ -1,4 +1,5 @@
-# Cycling Team Lineage Timeline
+# Velograph
+### The Cycling Team Lineage Timeline
 
 An open-source visualization of the evolutionary history of professional cycling teams from 1900 to present.
 
@@ -31,6 +32,54 @@ This project tracks the lineage of professional cycling teams through time, visu
 ## Project Status
 
 🚧 **In Development** - Following incremental implementation via structured prompts
+
+## CI: Postgres-Backed Backend Tests
+
+This repository runs a GitHub Actions job that boots Postgres 15, applies Alembic migrations, and executes the full backend test suite.
+
+- Workflow: `.github/workflows/backend-postgres-tests.yml`
+- Database URL: `postgresql+asyncpg://cycling:cycling@localhost:5432/cycling_lineage`
+- Steps: checkout → install backend deps → wait for Postgres → `alembic upgrade head` → `pytest`
+
+## Run Postgres-Backed Tests Locally
+
+Option 1: Using Docker Compose services (backend + postgres)
+
+```bash
+docker-compose up -d postgres
+cd backend
+export DATABASE_URL=postgresql+asyncpg://cycling:cycling@localhost:5432/cycling_lineage
+alembic upgrade head
+pytest tests/ -v --tb=short
+```
+
+```powershell
+docker-compose up -d postgres
+Set-Location backend
+$env:DATABASE_URL = "postgresql+asyncpg://cycling:cycling@localhost:5432/cycling_lineage"
+alembic upgrade head
+pytest tests/ -v --tb=short
+```
+
+Option 2: Makefile helper (runs Alembic migrations locally)
+
+```bash
+cd backend
+export DATABASE_URL=postgresql+asyncpg://cycling:cycling@localhost:5432/cycling_lineage
+make alembic-upgrade-local
+pytest tests/ -v --tb=short
+```
+
+```powershell
+Set-Location backend
+$env:DATABASE_URL = "postgresql+asyncpg://cycling:cycling@localhost:5432/cycling_lineage"
+make alembic-upgrade-local
+pytest tests/ -v --tb=short
+```
+
+Notes:
+- The in-memory SQLite fixtures are still used for fast unit tests; the Postgres workflow validates Alembic migrations and DB connectivity.
+- The app’s `alembic/env.py` reads `DATABASE_URL` from the environment via `app.core.config.Settings`.
 
 ## Getting Started
 
