@@ -86,8 +86,10 @@ Notes:
 _(Instructions will be added after initial setup)_
 
 ## License
+This project is licensed under the Apache License 2.0.
 
-MIT License (or your preferred license)
+- See `LICENSE` for the full license text.
+- See `NOTICE` for third-party attributions and notices.
 
 ## Contributing
 

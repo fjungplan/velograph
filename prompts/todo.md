@@ -120,14 +120,15 @@
 ## Phase 2: Public Read API
 
 ### Prompt 7: Basic Team Endpoints
-- [ ] **Router**
-    - [ ] Create `app/api/v1/teams.py`.
-    - [ ] Endpoints: `GET /teams`, `GET /teams/{id}`, `GET /teams/{id}/eras`.
-- [ ] **Schemas**
-    - [ ] Create Pydantic models for Responses (`TeamNodeResponse`, `TeamEraResponse`).
-- [ ] **Repository**
-    - [ ] Implement `TeamRepository` with filtering (year, tier) and pagination.
-- [ ] **Docs**: Ensure OpenAPI/Swagger shows correct schemas.
+- [x] **Router**
+    - [x] Create `app/api/v1/teams.py`.
+    - [x] Endpoints: `GET /teams`, `GET /teams/{id}`, `GET /teams/{id}/eras`.
+- [x] **Schemas**
+    - [x] Create Pydantic models for Responses (`TeamNodeResponse`, `TeamEraResponse`).
+- [x] **Repository**
+    - [x] Implement `TeamRepository` with filtering (year, tier) and pagination.
+- [x] **Docs**: OpenAPI shows correct schemas (via FastAPI models) and examples will follow.
+- [x] **Testing**: Added `tests/api/test_teams.py`; endpoints verified with SQLite fixtures and Postgres CI.
 
 ### Prompt 8: Lineage Graph Endpoint
 - [ ] **Endpoint**

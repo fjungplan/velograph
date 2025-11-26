@@ -9,6 +9,25 @@ Velograph visualizes and manages the historical evolution of professional cyclin
 - **Team Era**: A single season snapshot of a team (name, sponsors, tier, etc.).
 - **Lineage Event**: Records structural changes (succession, merge, split) between teams.
 
+## Public Read API (Phase 2 – Prompt 7)
+These endpoints provide read-only access to team nodes and eras.
+
+- GET `/api/v1/teams`
+  - Query: `skip` (default 0), `limit` (default 50, max 100), `active_in_year` (optional), `tier_level` (optional)
+  - Returns: `{ items: TeamNodeResponse[], total, skip, limit }`
+
+- GET `/api/v1/teams/{node_id}`
+  - Returns a single `TeamNode` with its eras and lineage relationships
+  - 404 if the node does not exist
+
+- GET `/api/v1/teams/{node_id}/eras`
+  - Query: `year` (optional)
+  - Returns all eras for a node, ordered by `season_year` DESC
+
+Notes
+- Path parameter `node_id` must be a valid UUID; invalid input returns a 422 validation error.
+- OpenAPI docs at `/docs` detail schemas and allow trying requests in the browser.
+
 ## Canonicalization of MERGE/SPLIT Events
 ### What Changed?
 To ensure data integrity and clarity, the system now automatically converts ("canonicalizes") any attempted MERGE or SPLIT event that only has a single leg (i.e., only one predecessor or one successor) into a standard succession event (LEGAL_TRANSFER or SPIRITUAL_SUCCESSION). This prevents accidental mislabeling and keeps the lineage graph semantically correct.
