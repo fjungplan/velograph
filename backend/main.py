@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.api.health import router as health_router
 from app.db.database import create_tables
@@ -11,10 +12,32 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for startup and shutdown events.
+    """
+    # Startup
+    logger.info("Starting up application...")
+    try:
+        await create_tables()
+        logger.info("Database tables created/verified successfully")
+    except Exception as e:
+        logger.error(f"Error creating database tables: {e}", exc_info=True)
+        raise
+    
+    yield
+    
+    # Shutdown (if needed in future)
+    logger.info("Shutting down application...")
+
+
 app = FastAPI(
     title="Cycling Team Lineage API",
     description="API for tracking professional cycling team history and lineage",
-    version="0.1.0"
+    version="0.1.0",
+    lifespan=lifespan
 )
 
 # CORS middleware
@@ -51,19 +74,6 @@ async def general_exception_handler(request: Request, exc: Exception):
             "message": str(exc) if settings.DEBUG else "An error occurred",
         },
     )
-
-
-# Startup event
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database tables on startup"""
-    logger.info("Starting up application...")
-    try:
-        await create_tables()
-        logger.info("Database tables created/verified successfully")
-    except Exception as e:
-        logger.error(f"Error creating database tables: {e}", exc_info=True)
-        raise
 
 
 # Include routers

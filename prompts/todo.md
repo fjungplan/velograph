@@ -50,17 +50,24 @@
     - [x] No errors in docker-compose logs.
 
 ### Prompt 3: Database Migration System
-- [ ] **Alembic Setup**
-    - [ ] Initialize alembic (`alembic init`).
-    - [ ] Configure `alembic.ini` and `env.py` for async.
-- [ ] **Base Model**
-    - [ ] Create `app/db/base.py` with timestamps mixin.
-- [ ] **Team Node Migration**
-    - [ ] Create migration script for `team_node` table.
-    - [ ] Define `TeamNode` SQLAlchemy model.
-- [ ] **CLI Helpers**
-    - [ ] Create Make/Shell commands for `migrate`, `rollback`, `create-migration`.
-- [ ] **Testing**: Run migration, verify table creation, rollback.
+- [x] **Alembic Setup**
+    - [x] Initialize alembic (`alembic init`).
+    - [x] Configure `alembic.ini` for async PostgreSQL connection.
+    - [x] Configure `env.py` with async engine and model imports.
+- [x] **Base Model**
+    - [x] Create `app/db/base.py` with DeclarativeBase and TimestampMixin.
+- [x] **Team Node Migration**
+    - [x] Create migration script for `team_node` table with indexes.
+    - [x] Define `TeamNode` SQLAlchemy model with UUID primary key.
+    - [x] Add validation: `founding_year >= 1900`.
+- [x] **CLI Helpers**
+    - [x] Create Makefile with `migrate`, `migrate-rollback`, `migrate-create` commands.
+- [x] **Docker Integration**
+    - [x] Update docker-compose.yml to run migrations before backend starts.
+- [x] **Testing**: 
+    - [x] Created `tests/test_migrations.py` with 10 tests.
+    - [x] Verified migration upgrade/downgrade works correctly.
+    - [x] Verified table structure, indexes, and validation.
 
 ---
 
