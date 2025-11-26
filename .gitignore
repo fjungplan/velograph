@@ -1,0 +1,45 @@
+# Python
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/**/*.pyc
+backend/.env
+backend/alembic/versions/*.pyc
+*.py[cod]
+*$py.class
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.env
+frontend/.env.local
+
+# Database
+postgres_data/
+*.db
+*.sqlite3
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Docker
+*.env.prod
+docker-compose.override.yml
+
+# Misc
+.pytest_cache/
+.coverage
+htmlcov/
