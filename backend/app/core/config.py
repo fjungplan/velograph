@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     
     # CORS
     CORS_ORIGINS: List[str] = ["http://localhost:5173"]
+
+    # Timeline cache
+    TIMELINE_CACHE_ENABLED: bool = True
+    TIMELINE_CACHE_TTL_SECONDS: int = 300
     
     model_config = SettingsConfigDict(
         env_file=".env",

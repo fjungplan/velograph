@@ -7,6 +7,7 @@ from app.models.team import TeamNode
 from app.models.enums import EventType
 from app.core.exceptions import ValidationException
 import uuid
+from app.services.timeline_service import TimelineService
 
 class LineageService:
     def __init__(self, db: AsyncSession):
@@ -58,6 +59,8 @@ class LineageService:
         event.validate()
         self.db.add(event)
         await self.db.commit()
+        # Invalidate timeline cache after data change
+        TimelineService.invalidate_cache()
         await self.db.refresh(event)
 
         # Canonicalization: auto-downgrade single-leg MERGE/SPLIT to succession

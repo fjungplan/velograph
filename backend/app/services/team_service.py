@@ -14,6 +14,7 @@ from app.core.exceptions import (
     DuplicateEraException,
     ValidationException,
 )
+from app.services.timeline_service import TimelineService
 
 
 class TeamService:
@@ -96,5 +97,7 @@ class TeamService:
         )
         session.add(era)
         await session.commit()
+        # Invalidate timeline cache after data change
+        TimelineService.invalidate_cache()
         await session.refresh(era)
         return era

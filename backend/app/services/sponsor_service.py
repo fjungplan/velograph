@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.models.sponsor import SponsorMaster, SponsorBrand, TeamSponsorLink
 from app.models.team import TeamEra
 from app.core.exceptions import ValidationException, NodeNotFoundException
+from app.services.timeline_service import TimelineService
 
 
 class SponsorService:
@@ -194,6 +195,8 @@ class SponsorService:
         )
         session.add(link)
         await session.flush()
+        # Invalidate timeline cache after data change
+        TimelineService.invalidate_cache()
         return link
 
     @staticmethod

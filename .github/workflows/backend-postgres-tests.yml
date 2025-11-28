@@ -2,7 +2,7 @@ name: Backend Postgres Tests
 
 on:
   push:
-    branches: [ main, "**" ]
+    branches: [ "main" ]
   pull_request:
     branches: [ "**" ]
 
@@ -80,13 +80,6 @@ jobs:
           DATABASE_URL: ${{ env.DATABASE_URL }}
         run: |
           alembic upgrade head
-
-      - name: Run backend tests (full suite)
-        working-directory: backend
-        env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-        run: |
-          pytest tests/ -v --tb=short
 
       - name: Run backend tests (full suite)
         working-directory: backend

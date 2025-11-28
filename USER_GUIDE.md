@@ -57,3 +57,27 @@ To ensure data integrity and clarity, the system now automatically converts ("ca
 ## Further Reading
 - See the in-app help or the `/docs` folder for more details on specific features.
 - For technical details, refer to the backend and frontend documentation as they are developed.
+
+## Timeline Endpoint and Caching
+The timeline graph endpoint provides D3-friendly data:
+
+- GET `/api/v1/timeline`
+  - Query params: `start_year`, `end_year`, `include_dissolved`, `tier_filter`
+  - Response: `{ nodes: [...], links: [...], meta: { year_range, node_count, link_count } }`
+
+### Performance and Caching
+- The timeline endpoint uses an optional in-memory cache to speed up repeated requests.
+- Configure in `app/core/config.py`:
+  - `TIMELINE_CACHE_ENABLED`: enable/disable caching (default: true)
+  - `TIMELINE_CACHE_TTL_SECONDS`: cache TTL in seconds (default: 300)
+- Cache invalidation is automatic when timeline-affecting data changes:
+  - Creating eras
+  - Linking sponsors to eras
+  - Creating lineage events
+- Manual invalidation (ops/debugging):
+  - `POST /api/v1/admin/cache/invalidate`
+  - PowerShell example:
+    ```powershell
+    Invoke-RestMethod -Uri "http://localhost:8000/api/v1/admin/cache/invalidate" -Method Post
+    ```
+  - Note: Protect admin endpoints in production with proper authentication/authorization.
