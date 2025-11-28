@@ -19,14 +19,21 @@ class TeamRepository:
             select(TeamNode)
             .where(TeamNode.node_id == node_id)
             .options(
-                selectinload(TeamNode.eras),
+                # Eager-load eras with sponsors and brand to prevent lazy loads
+                selectinload(TeamNode.eras)
+                .selectinload(TeamEra.sponsor_links)
+                .selectinload(TeamSponsorLink.brand),
                 # Eager-load lineage events and their related nodes' eras to avoid async lazy loads
                 selectinload(TeamNode.outgoing_events)
                 .selectinload(LineageEvent.next_node)
-                .selectinload(TeamNode.eras),
+                .selectinload(TeamNode.eras)
+                .selectinload(TeamEra.sponsor_links)
+                .selectinload(TeamSponsorLink.brand),
                 selectinload(TeamNode.incoming_events)
                 .selectinload(LineageEvent.previous_node)
-                .selectinload(TeamNode.eras),
+                .selectinload(TeamNode.eras)
+                .selectinload(TeamEra.sponsor_links)
+                .selectinload(TeamSponsorLink.brand),
             )
         )
         result = await session.execute(stmt)
@@ -73,7 +80,11 @@ class TeamRepository:
 
         # Data query with pagination and eager loading of eras for convenience
         data_stmt = (
-            base_stmt.options(selectinload(TeamNode.eras)).offset(skip).limit(limit)
+            base_stmt.options(
+                selectinload(TeamNode.eras)
+                .selectinload(TeamEra.sponsor_links)
+                .selectinload(TeamSponsorLink.brand)
+            ).offset(skip).limit(limit)
         )
         nodes = list((await session.execute(data_stmt)).scalars().unique().all())
         return nodes, int(total)
