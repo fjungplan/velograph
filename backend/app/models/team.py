@@ -20,6 +20,7 @@ from app.db.types import GUID
 
 if TYPE_CHECKING:
     from app.models.sponsor import TeamSponsorLink
+    from app.models.lineage import LineageEvent
 
 
 class TeamNode(Base, TimestampMixin):
