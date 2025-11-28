@@ -1,15 +1,18 @@
 from typing import List, Dict
 from app.models.team import TeamNode, TeamEra
 from app.models.lineage import LineageEvent
+from app.services.dto import build_timeline_era_dto, build_team_summary_dto
 
 
 class GraphBuilder:
     def build_jersey_composition(self, era: TeamEra) -> List[Dict]:
+        # Kept for backward compatibility if used elsewhere; DTO now handles sponsors.
         sponsors = []
-        for link in era.sponsors_ordered:
+        for link in getattr(era, "sponsors_ordered", []) or []:
+            brand = getattr(link, "brand", None)
             sponsors.append({
-                "brand": link.brand.brand_name,
-                "color": link.brand.color_hex,
+                "brand": brand.brand_name if brand else None,
+                "color": getattr(brand, "color_hex", None) or getattr(brand, "default_hex_color", None),
                 "prominence": link.prominence_percent,
             })
         return sponsors
@@ -17,20 +20,10 @@ class GraphBuilder:
     def build_nodes(self, teams: List[TeamNode]) -> List[Dict]:
         nodes: List[Dict] = []
         for node in teams:
-            eras = []
-            for era in node.eras:
-                eras.append({
-                    "year": era.season_year,
-                    "name": era.registered_name,
-                    "tier": era.tier_level,
-                    "sponsors": self.build_jersey_composition(era),
-                })
-            nodes.append({
-                "id": str(node.node_id),
-                "founding_year": node.founding_year,
-                "dissolution_year": node.dissolution_year,
-                "eras": sorted(eras, key=lambda e: e["year"]),
-            })
+            node_dto = build_team_summary_dto(node)
+            node_dto["eras"] = [build_timeline_era_dto(era) for era in node.eras]
+            node_dto["eras"] = sorted(node_dto["eras"], key=lambda e: e["year"])
+            nodes.append(node_dto)
         return nodes
 
     def build_links(self, events: List[LineageEvent]) -> List[Dict]:
