@@ -33,7 +33,7 @@ def upgrade():
         sa.Column('previous_node_id', pg.UUID(as_uuid=True), sa.ForeignKey('team_node.node_id', ondelete='SET NULL'), nullable=True),
         sa.Column('next_node_id', pg.UUID(as_uuid=True), sa.ForeignKey('team_node.node_id', ondelete='SET NULL'), nullable=True),
         sa.Column('event_year', sa.Integer(), nullable=False),
-        sa.Column('event_type', pg.ENUM(name='event_type_enum'), nullable=False),
+        sa.Column('event_type', pg.ENUM(name='event_type_enum', create_type=False), nullable=False),
         sa.Column('notes', sa.Text(), nullable=True),
         sa.Column('created_at', sa.TIMESTAMP(), server_default=sa.text('NOW()')),
         sa.Column('updated_at', sa.TIMESTAMP(), server_default=sa.text('NOW()')),
@@ -51,4 +51,5 @@ def downgrade():
     op.drop_index('idx_lineage_event_next', table_name='lineage_event')
     op.drop_index('idx_lineage_event_prev', table_name='lineage_event')
     op.drop_table('lineage_event')
+    # Drop enum type only if it exists
     pg.ENUM(name='event_type_enum').drop(op.get_bind(), checkfirst=True)
