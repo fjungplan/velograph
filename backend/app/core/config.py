@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     # Timeline cache
     TIMELINE_CACHE_ENABLED: bool = True
     TIMELINE_CACHE_TTL_SECONDS: int = 300
+
+    # Scraper settings
+    SCRAPER_ENABLED: bool = False
+    SCRAPER_MIN_DELAY: int = 15  # seconds between requests to same domain
+    SCRAPER_USER_AGENT: str = "CyclingLineageBot/1.0"
+    SCRAPER_INTERVAL: int = 300  # seconds between full cycles
     
     model_config = SettingsConfigDict(
         env_file=".env",
