@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import './Tooltip.css';
 
 export default function Tooltip({ content, position, visible }) {
