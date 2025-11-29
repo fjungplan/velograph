@@ -3,14 +3,24 @@ Tests for health check endpoint.
 """
 import pytest
 from httpx import AsyncClient
-from unittest.mock import patch, AsyncMock
 from fastapi import status
+from app.api.health import get_checker
 
 
 @pytest.mark.asyncio
 async def test_health_endpoint_returns_200(client):
-    """Test that health endpoint returns 200 when database is connected"""
+    """Test that health endpoint returns 200 when database is connected.
+
+    In test environment, the app's global engine points to Postgres by default,
+    so we mock `check_db_connection` to return True for a deterministic success.
+    """
+    # Override checker to always return True
+    from main import app
+    async def _ok_checker(session):
+        return True
+    app.dependency_overrides[get_checker] = lambda: _ok_checker
     response = await client.get("/health")
+    app.dependency_overrides.pop(get_checker, None)
     
     assert response.status_code == status.HTTP_200_OK
     
@@ -47,36 +57,40 @@ async def test_health_endpoint_response_fields(client):
 @pytest.mark.asyncio
 async def test_health_endpoint_database_failure(client):
     """Test that health endpoint returns 503 when database is disconnected"""
-    # Mock the check_db_connection function to return False
-    with patch("app.api.health.check_db_connection", new_callable=AsyncMock) as mock_check:
-        mock_check.return_value = False
-        
-        response = await client.get("/health")
-        
-        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-        
-        data = response.json()
-        assert data["status"] == "unhealthy"
-        assert data["database"] == "disconnected"
-        assert "detail" in data
-        assert data["detail"] == "Database connection failed"
+    # Override checker to return False
+    from main import app
+    async def _fail_checker(session):
+        return False
+    app.dependency_overrides[get_checker] = lambda: _fail_checker
+    response = await client.get("/health")
+    app.dependency_overrides.pop(get_checker, None)
+
+    assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+
+    data = response.json()
+    assert data["status"] == "unhealthy"
+    assert data["database"] == "disconnected"
+    assert "detail" in data
+    assert data["detail"] == "Database connection failed"
 
 
 @pytest.mark.asyncio
 async def test_health_endpoint_database_exception(client):
     """Test that health endpoint handles database exceptions gracefully"""
-    # Mock the check_db_connection function to raise an exception
-    with patch("app.api.health.check_db_connection", new_callable=AsyncMock) as mock_check:
-        mock_check.side_effect = Exception("Database error")
-        
-        response = await client.get("/health")
-        
-        # Should return 503 as the function will return False on exception
-        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-        
-        data = response.json()
-        assert data["status"] == "unhealthy"
-        assert data["database"] == "disconnected"
+    # Override checker to raise an exception
+    from main import app
+    async def _error_checker(session):
+        raise Exception("Database error")
+    app.dependency_overrides[get_checker] = lambda: _error_checker
+    response = await client.get("/health")
+    app.dependency_overrides.pop(get_checker, None)
+
+    # Should return 503 as the function will return False on exception
+    assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+
+    data = response.json()
+    assert data["status"] == "unhealthy"
+    assert data["database"] == "disconnected"
 
 
 @pytest.mark.asyncio

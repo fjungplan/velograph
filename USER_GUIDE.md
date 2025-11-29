@@ -81,3 +81,32 @@ The timeline graph endpoint provides D3-friendly data:
     Invoke-RestMethod -Uri "http://localhost:8000/api/v1/admin/cache/invalidate" -Method Post
     ```
   - Note: Protect admin endpoints in production with proper authentication/authorization.
+ 
+### Client Caching Headers & Conditional Requests
+To improve performance, read endpoints return `Cache-Control` and `ETag` headers and support conditional requests:
+
+- Cache-Control: `max-age=300` on timeline and teams read endpoints.
+- ETag: Weak ETag (`W/"..."`) computed from the canonical JSON of the response.
+- Conditional 304: Clients may send `If-None-Match`; if the tag matches, the server returns `304 Not Modified`.
+
+Affected endpoints:
+- `GET /api/v1/timeline`
+- `GET /api/v1/teams/{node_id}`
+- `GET /api/v1/teams/{node_id}/eras`
+- `GET /api/v1/teams`
+
+PowerShell example:
+```powershell
+# First request
+$resp = Invoke-WebRequest -Uri http://localhost:8000/api/v1/timeline
+$etag = $resp.Headers["ETag"]
+
+# Conditional request
+Invoke-WebRequest -Uri http://localhost:8000/api/v1/timeline -Headers @{"If-None-Match"=$etag}
+```
+
+### Testing & CI on Windows
+For stable test runs on Windows, enable Python faulthandler:
+
+- Local: `python -X faulthandler -m pytest -q`
+- CI: GitHub Actions workflow uses `windows-latest` with faulthandler enabled for backend tests.

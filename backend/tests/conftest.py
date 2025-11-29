@@ -8,6 +8,7 @@ from app.db.base import Base
 from app.core.config import settings
 from main import app
 from app.db.database import get_db
+from app.api.health import get_checker
 from app.models.team import TeamNode, TeamEra
 from app.models.lineage import LineageEvent
 from app.models.enums import EventType
@@ -116,12 +117,19 @@ async def test_client(isolated_session) -> AsyncGenerator[AsyncClient, None]:
     async def _override_get_db():
         yield isolated_session
 
+    # Override DB session and health checker to avoid external DB access
     app.dependency_overrides[get_db] = _override_get_db
+
+    async def _override_checker(session: AsyncSession):
+        # Always report connected in tests unless a test explicitly patches otherwise
+        return True
+    app.dependency_overrides[get_checker] = lambda: _override_checker
     try:
         async with AsyncClient(app=app, base_url="http://test") as ac:
             yield ac
     finally:
         app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_checker, None)
 
 
 @pytest_asyncio.fixture

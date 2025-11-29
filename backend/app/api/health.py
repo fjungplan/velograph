@@ -1,16 +1,36 @@
 """
 Health check endpoint for monitoring application and database status.
 """
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status, Depends
 from fastapi.responses import JSONResponse
 from datetime import datetime
-from app.db.database import check_db_connection
+from typing import Callable, Awaitable
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
+from app.db.database import get_db
 
 router = APIRouter()
 
 
+async def check_db_connection(session: AsyncSession) -> bool:
+    """Helper that runs a trivial query; kept for test patching."""
+    try:
+        await session.execute(text("SELECT 1"))
+        return True
+    except Exception:
+        return False
+
+
+def get_checker() -> Callable[[AsyncSession], Awaitable[bool]]:
+    """Dependency provider for the DB connectivity check function."""
+    return check_db_connection
+
+
 @router.get("/health")
-async def health_check():
+async def health_check(
+    session: AsyncSession = Depends(get_db),
+    checker: Callable[[AsyncSession], Awaitable[bool]] = Depends(get_checker),
+):
     """
     Health check endpoint that verifies application and database status.
     
@@ -27,9 +47,9 @@ async def health_check():
     """
     timestamp = datetime.utcnow().isoformat() + "Z"
     
-    # Check database connectivity - catch any exceptions
+    # Check database connectivity against the injected session (overridable in tests)
     try:
-        db_connected = await check_db_connection()
+        db_connected = await checker(session)
     except Exception:
         db_connected = False
     

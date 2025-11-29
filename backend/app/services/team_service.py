@@ -15,6 +15,7 @@ from app.core.exceptions import (
     ValidationException,
 )
 from app.services.timeline_service import TimelineService
+from app.repositories.team_repository import TeamRepository
 
 
 class TeamService:
@@ -22,26 +23,63 @@ class TeamService:
 
     @staticmethod
     async def get_node_with_eras(session: AsyncSession, node_id: uuid.UUID) -> TeamNode:
-        stmt = (
-            select(TeamNode)
-            .where(TeamNode.node_id == node_id)
-            .options(selectinload(TeamNode.eras))
-        )
-        result = await session.execute(stmt)
-        node = result.scalar_one_or_none()
+        # Use repository to ensure consistent eager-loading of eras and sponsors
+        node = await TeamRepository.get_by_id(session, node_id)
         if not node:
             # SELECT may begin a transaction implicitly; rollback to clear state
             await session.rollback()
             raise NodeNotFoundException(f"TeamNode {node_id} not found")
+        # Defensive: avoid async lazy-load by ensuring eras are present in instance dict
+        if 'eras' not in node.__dict__:
+            # Fetch eras via repository with eager-loaded sponsors
+            eras = await TeamRepository.get_eras_for_node(session, node_id)
+            node.__dict__['eras'] = eras
         return node
 
     @staticmethod
     async def get_eras_by_year(session: AsyncSession, year: int) -> List[TeamEra]:
         if year < 1900 or year > 2100:
             raise ValidationException(f"Year {year} out of allowed range (1900-2100)")
+        # Delegate to repository to keep eager-loading consistent
         stmt = select(TeamEra).where(TeamEra.season_year == year)
         result = await session.execute(stmt)
         return list(result.scalars().all())
+
+    @staticmethod
+    async def list_nodes(
+        session: AsyncSession,
+        *,
+        skip: int = 0,
+        limit: int = 50,
+        active_in_year: Optional[int] = None,
+        tier_level: Optional[int] = None,
+    ) -> tuple[List[TeamNode], int]:
+        # Use repository to handle filtering, pagination, and eager-loading
+        nodes, total = await TeamRepository.get_all(
+            session,
+            skip=skip,
+            limit=limit,
+            active_in_year=active_in_year,
+            tier_level=tier_level,
+        )
+        # Defensive: ensure eras are attached to each node to avoid async lazy-loads later
+        for n in nodes:
+            if 'eras' not in n.__dict__:
+                eras = await TeamRepository.get_eras_for_node(session, n.node_id)
+                n.__dict__['eras'] = eras
+        return nodes, total
+
+    @staticmethod
+    async def get_node_eras(
+        session: AsyncSession,
+        node_id: uuid.UUID,
+        *,
+        year_filter: Optional[int] = None,
+    ) -> List[TeamEra]:
+        # Delegate to repository to apply eager-loading consistently
+        return await TeamRepository.get_eras_for_node(
+            session, node_id, year_filter=year_filter
+        )
 
     @staticmethod
     async def create_era(

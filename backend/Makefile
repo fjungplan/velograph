@@ -28,8 +28,8 @@ migrate-create:
 	docker-compose exec backend alembic revision --autogenerate -m "$(NAME)"
 
 test:
-	@echo "Running tests..."
-	docker-compose exec backend pytest
+	@echo "Running tests with Python faulthandler enabled..."
+	docker-compose exec backend python -X faulthandler -m pytest -q
 
 shell:
 	@echo "Opening backend container shell..."

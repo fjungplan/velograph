@@ -134,8 +134,13 @@ class LineageService:
         result = await self.db.execute(
             select(TeamNode)
             .options(
-                selectinload(TeamNode.outgoing_events),
-                selectinload(TeamNode.incoming_events),
+                # Eager-load lineage relations and eras with sponsors to avoid async lazy-loads
+                selectinload(TeamNode.outgoing_events)
+                .selectinload(LineageEvent.next_node)
+                .selectinload(TeamNode.eras),
+                selectinload(TeamNode.incoming_events)
+                .selectinload(LineageEvent.previous_node)
+                .selectinload(TeamNode.eras),
                 selectinload(TeamNode.eras),
             )
             .where(TeamNode.node_id == node_id)

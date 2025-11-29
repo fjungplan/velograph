@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.models.team import TeamNode, TeamEra
 from app.models.lineage import LineageEvent
+from app.repositories.timeline_repository import TimelineRepository
 from app.core.graph_builder import GraphBuilder
 from app.core.config import settings
 
@@ -40,37 +41,33 @@ class TimelineService:
             if cached and cached[0] > now:
                 return cached[1]
 
-        nodes_query = (
-            select(TeamNode)
-            .options(
-                selectinload(TeamNode.eras).selectinload(TeamEra.sponsor_links).selectinload(
-                    TeamEra.sponsor_links.property.mapper.class_.brand  # type: ignore
-                ),
-                selectinload(TeamNode.outgoing_events),
-                selectinload(TeamNode.incoming_events),
-            )
+        repo = TimelineRepository()
+        eras, events = await repo.fetch_eras_and_events(
+            self.session,
+            year=None,  # we'll filter by range below
+            tier=None,
         )
 
-        # filter dissolved
-        if not include_dissolved:
-            nodes_query = nodes_query.where((TeamNode.dissolution_year.is_(None)) | (TeamNode.dissolution_year > end_year))
+        # Build team nodes from eras, applying filters and dissolved policy
+        # Group eras by node
+        nodes_by_id: Dict[str, TeamNode] = {}
+        for era in eras:
+            if not (start_year <= era.season_year <= end_year):
+                continue
+            if tier_filter is not None and era.tier_level not in tier_filter:
+                continue
+            node = era.node
+            if not include_dissolved and node.dissolution_year is not None and node.dissolution_year <= end_year:
+                continue
+            if str(node.node_id) not in nodes_by_id:
+                nodes_by_id[str(node.node_id)] = node
+                # Avoid triggering lazy load when clearing eras
+                node.__dict__['eras'] = []
+            nodes_by_id[str(node.node_id)].eras.append(era)
+        teams = list(nodes_by_id.values())
 
-        result = await self.session.execute(nodes_query)
-        teams: List[TeamNode] = list(result.scalars().all())
-
-        # filter eras by year and tier
-        for node in teams:
-            node.eras = [
-                era for era in node.eras
-                if (start_year <= era.season_year <= end_year) and (tier_filter is None or (era.tier_level in tier_filter))
-            ]
-
-        # lineage events within range
-        events_result = await self.session.execute(
-            select(LineageEvent)
-            .where((LineageEvent.event_year >= start_year) & (LineageEvent.event_year <= end_year))
-        )
-        events: List[LineageEvent] = list(events_result.scalars().all())
+        # Filter events to range
+        events = [e for e in events if (start_year <= e.event_year <= end_year)]
 
         nodes = self.builder.build_nodes(teams)
         links = self.builder.build_links(events)
