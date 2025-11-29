@@ -178,35 +178,43 @@
 ## Phase 4: Scraper Foundation
 
 ### Prompt 12: Scraper Infrastructure
-- [ ] **Structure**: Create `app/scraper/` package.
-- [ ] **Rate Limiter**: Implement `RateLimiter` class (15s delay per domain).
-- [ ] **Base Class**: Create `BaseScraper` with `httpx` client.
-- [ ] **Scheduler**: Implement Round-robin `ScraperScheduler`.
+- [x] **Structure**: Create `app/scraper/` package.
+- [x] **Rate Limiter**: Implement `RateLimiter` class (15s delay per domain).
+- [x] **Base Class**: Create `BaseScraper` with `httpx` client.
+- [x] **Scheduler**: Implement Round-robin `ScraperScheduler`.
 
 ### Prompt 13: PCS Scraper
-- [ ] **Parser**: Implement `PCScraper` using BeautifulSoup.
-    - [ ] Extract name, UCI code, tier, sponsors.
-- [ ] **Service**: Implement `ScraperService.upsert_scraped_data`.
-    - [ ] Logic to respect `is_manual_override`.
-- [ ] **Admin API**: Create endpoints to start/stop/trigger scraper.
-- [ ] **Testing**: Test with saved HTML fixtures.
+- [x] **Parser**: Implement `PCScraper` using BeautifulSoup.
+    - [x] Extract name, UCI code, tier, sponsors.
+- [x] **Service**: Implement `ScraperService.upsert_scraped_data`.
+    - [x] Logic to respect `is_manual_override`.
+- [x] **Admin API**: Create endpoints to start/stop/trigger scraper.
+- [x] **Testing**: Test with saved HTML fixtures.
+
+✅ Status: Implemented and merged via PR #11. All 138 backend tests passing.
 
 ---
 
 ## Phase 5: Desktop Visualization
 
 ### Prompt 14: D3 Setup
-- [ ] **Component**: Create `TimelineGraph.jsx` with SVG container.
-- [ ] **Zoom**: Implement D3 Zoom behavior.
-- [ ] **Utils**: Create `validateGraphData`.
-- [ ] **Responsiveness**: Create `useResponsive` hook.
+- [x] **Component**: Create `TimelineGraph.jsx` with SVG container.
+- [x] **Zoom**: Implement D3 Zoom behavior.
+- [x] **Utils**: Create `validateGraphData`.
+- [x] **Responsiveness**: Create `useResponsive` hook.
+
+✅ Status: Implemented and merged via PR #12. D3.js installed, TimelineGraph component with zoom, graph utilities (validateGraphData, getGraphBounds), visualization constants, useResponsive hook, HomePage integration with conditional rendering.
 
 ### Prompt 15: Layout Algorithm
-- [ ] **Calculator**: Create `LayoutCalculator` class.
-    - [ ] X-Axis: Based on `founding_year`.
-    - [ ] Y-Axis: Grouped by Tier level.
-- [ ] **Rendering**: Render links (Bezier curves) and nodes (rectangles).
-- [ ] **Styling**: Differentiate spiritual vs. legal links.
+
+### Prompt 15: Layout Algorithm
+- [x] **Calculator**: Create `LayoutCalculator` class.
+    - [x] X-Axis: Based on `founding_year`.
+    - [x] Y-Axis: Grouped by Tier level.
+- [x] **Rendering**: Render links (Bezier curves) and nodes (rectangles).
+- [x] **Styling**: Differentiate spiritual vs. legal links.
+
+✅ Status: Implemented and merged via PR #13. LayoutCalculator with year-based X positioning, tier-based Y grouping, dynamic node widths, Bezier curve paths. Nodes render as blue rectangles, links differentiate spiritual (dashed) vs legal (solid). Comprehensive test suite created.
 
 ### Prompt 16: Jersey Slice Rendering
 - [ ] **Renderer**: Implement `JerseyRenderer` class.
