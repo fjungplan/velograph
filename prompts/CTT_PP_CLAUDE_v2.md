@@ -137,7 +137,7 @@ Detailed Implementation Prompts
 
 * * *
 
-Phase 0: Foundation
+## Phase 0: Foundation
 -------------------
 
 ### Prompt 1: Project Initialization
@@ -323,7 +323,7 @@ Phase 0: Foundation
 
 * * *
 
-Phase 1: Core Data Model
+## Phase 1: Core Data Model
 ------------------------
 
 ### Prompt 4: Team Era Model and Migration
@@ -592,7 +592,7 @@ Phase 1: Core Data Model
 
 * * *
 
-Phase 2: Public Read API
+## Phase 2: Public Read API
 ------------------------
 
 ### Prompt 7: Basic Team Endpoints
@@ -905,7 +905,7 @@ Phase 2: Public Read API
 
 * * *
 
-Phase 3: Basic Frontend Shell
+## Phase 3: Basic Frontend Shell
 -----------------------------
 
 ### Prompt 10: React Project Setup and Routing
@@ -917,13 +917,13 @@ Phase 3: Basic Frontend Shell
     1. PROJECT STRUCTURE:
     frontend/
     ├── src/
-    │   ├── api/          # API client
-    │   ├── components/ # Reusable components
-    │   ├── pages/ # Route pages
-    │   ├── hooks/ # Custom hooks
-    │   ├── utils/ # Utilities
-    │   ├── App.jsx
-    │   └── main.jsx
+    │   ├── api/        # API client
+	│ 	├── components/ # Reusable components
+	│ 	├── pages/ 		# Route pages 
+	│ 	├── hooks/ 		# Custom hooks
+	│ 	├── utils/ 		# Utilities 
+	│ 	├── App.jsx 
+	│ 	└── main.jsx
 
 2.  DEPENDENCIES (package.json):
 
@@ -1047,7 +1047,7 @@ javascript
     - Hot reload works
     ```
     
-    ### Prompt 11: Loading States and Error Handling
+### Prompt 11: Loading States and Error Handling
 
 Implement robust loading states and error handling UI components:
 
@@ -1216,11 +1216,12 @@ javascript
     - React Query caching works
     ```
     
-    ---
+---
     
-    ## Phase 4: Scraper Foundation
+## Phase 4: Scraper Foundation
+-------------------
     
-    ### Prompt 12: Scraper Infrastructure Setup
+### Prompt 12: Scraper Infrastructure Setup
 
 Build the foundation for the "Gentle Scraper" with rate limiting and scheduling:
 
@@ -1420,7 +1421,7 @@ python
     - No actual external requests in tests (all mocked)
     ```
     
-    ### Prompt 13: ProCyclingStats Scraper Implementation
+### Prompt 13: ProCyclingStats Scraper Implementation
 
 Implement the first concrete scraper for ProCyclingStats.com:
 
@@ -1691,11 +1692,12 @@ python
     - No live external requests during tests
     ```
     
-    ---
+---
     
-    ## Phase 5: Desktop Visualization
+## Phase 5: Desktop Visualization
+-------------------
     
-    ### Prompt 14: D3.js Setup and Container
+### Prompt 14: D3.js Setup and Container
 
 Set up D3.js visualization infrastructure with SVG container and basic graph rendering:
 
@@ -1922,7 +1924,7 @@ javascript
     - Ready for actual graph rendering
     ```
     
-    ### Prompt 15: Graph Layout Algorithm - Sankey Base
+### Prompt 15: Graph Layout Algorithm - Sankey Base
 
 Implement the Sankey-style layout algorithm for positioning nodes and links:
 
@@ -2223,7 +2225,7 @@ javascript
     - Zoom and pan work with positioned nodes
     ```
     
-    ### Prompt 16: Jersey Slice Rendering
+### Prompt 16: Jersey Slice Rendering
 
 Implement the "Jersey Slice" visualization - nodes rendered with sponsor color stripes:
 
@@ -2504,7 +2506,7 @@ javascript
     - All sponsor colors are valid hex codes
     ```
     
-    ### Prompt 17: Interactive Controls and Zoom Levels
+### Prompt 17: Interactive Controls and Zoom Levels
 
 Implement zoom level system with different detail levels and interactive controls:
 
@@ -2843,7 +2845,7 @@ javascript
     - All interactions are smooth (no lag)
     ```
     
-    ### Prompt 18: Tooltip System
+### Prompt 18: Tooltip System
 
 Implement rich tooltips that appear on hover with team/link information:
 
@@ -2854,9 +2856,7 @@ REQUIREMENTS:
 javascript
 
     import { useEffect, useRef } from 'react';
-    import './Tooltip.css
-
-';
+    import './Tooltip.css';
 
 export default function Tooltip({ content, position, visible }) { const tooltipRef = useRef(null);
 
@@ -3830,9 +3830,7 @@ return ( <div ref={tooltipRef} className="timeline-tooltip"> {content} </div> );
     import { PerformanceMonitor } from '../utils/performanceMonitor';
     import { OptimizedRenderer } from '../utils/optimizedRenderer';
     
-    export default function TimelineGraph({
-
-data }) { const viewportManager = useRef(null); const performanceMonitor = useRef(new PerformanceMonitor()); const optimizedRenderer = useRef(null); const currentTransform = useRef(d3.zoomIdentity);
+    export default function TimelineGraph({data }) { const viewportManager = useRef(null); const performanceMonitor = useRef(new PerformanceMonitor()); const optimizedRenderer = useRef(null); const currentTransform = useRef(d3.zoomIdentity);
 
 useEffect(() => { if (!data || !containerRef.current) return;
 
@@ -4037,7 +4035,7 @@ return ( <div className="timeline-graph-container"> {/\* ... rest of component .
 
 * * *
 
-Phase 6: Authentication & Authorization
+## Phase 6: Authentication & Authorization
 ---------------------------------------
 
 ### Prompt 21: Google OAuth Backend Setup
@@ -4730,9 +4728,7 @@ python-jose\[cryptography\]==3.3.0 passlib==1.7.4 python-multipart==0.0.6 google
       async (error) => {
         const originalRequest = error.config;
         
-        if (error.response?.
-
-status === 401 && !originalRequest.\_retry) { if (isRefreshing) { // Wait for token refresh return new Promise((resolve) => { subscribeTokenRefresh((token) => { originalRequest.headers.Authorization = `Bearer ${token}`; resolve(apiClient(originalRequest)); }); }); }
+        if (error.response?.status === 401 && !originalRequest.\_retry) { if (isRefreshing) { // Wait for token refresh return new Promise((resolve) => { subscribeTokenRefresh((token) => { originalRequest.headers.Authorization = `Bearer ${token}`; resolve(apiClient(originalRequest)); }); }); }
 
       originalRequest._retry = true;
       isRefreshing = true;
@@ -5025,7 +5021,7 @@ VITE\_API\_URL=[http://localhost:8000](http://localhost:8000) VITE\_GOOGLE\_CLIE
 
 * * *
 
-Phase 7: The Wizard Editor
+## Phase 7: The Wizard Editor
 --------------------------
 
 ### Prompt 23: Edit Metadata Wizard
@@ -5656,9 +5652,7 @@ Phase 7: The Wizard Editor
     ):
         """Apply a merge: close old nodes, create new node with links"""
         # Create new team node
-        new_
-
-node = TeamNode( founding\_year=request.merge\_year ) session.add(new\_node) await session.flush() # Get node\_id
+        new_node = TeamNode( founding\_year=request.merge\_year ) session.add(new\_node) await session.flush() # Get node\_id
 
     # Create first era for new team
     new_era = TeamEra(
@@ -6479,7 +6473,7 @@ node = TeamNode( founding\_year=request.merge\_year ) session.add(new\_node) awa
 
 * * *
 
-Phase 8: Moderation System
+## Phase 8: Moderation System
 --------------------------
 
 ### Prompt 26: Moderation Queue
@@ -6583,9 +6577,7 @@ Phase 8: Moderation System
         class Config:
             from_attributes = True
     
-    class Review
-
-EditRequest(BaseModel): approved: bool notes: Optional\[str\] = None
+    class Review EditRequest(BaseModel): approved: bool notes: Optional\[str\] = None
 
 class ReviewEditResponse(BaseModel): edit\_id: str status: str message: str
 
@@ -7121,7 +7113,7 @@ class ModerationStatsResponse(BaseModel): pending\_count: int approved\_today: i
 
 * * *
 
-Phase 9: Mobile Optimization
+## Phase 9: Mobile Optimization
 ----------------------------
 
 ### Prompt 27: Mobile List View
@@ -7532,9 +7524,7 @@ Phase 9: Mobile Optimization
       top: 0;
       width: 14px;
       height: 14px;
-      border-radius: 50
-
-%; background: `#4A90E2`; border: 3px solid white; box-shadow: 0 0 0 2px `#4A90E2`; }
+      border-radius: 50; background: `#4A90E2`; border: 3px solid white; box-shadow: 0 0 0 2px `#4A90E2`; }
 
 .timeline-item.latest::after { background: `#4CAF50`; box-shadow: 0 0 0 2px `#4CAF50`; }
 
@@ -7602,7 +7592,7 @@ Phase 9: Mobile Optimization
 
 * * *
 
-Phase 10: Polish & Deployment
+## Phase 10: Polish & Deployment
 -----------------------------
 
 ### Prompt 28: Performance Optimization and Caching
@@ -8308,63 +8298,3 @@ The prompts cover:
 *   **Production** (Docker, caching, SEO, deployment)
 
 Each prompt is designed to be **copy-pasted directly** into a coding agent like Cursor, Copilot, or Claude Code, and will result in a working, tested feature that integrates seamlessly with the rest of the application.
-
-Retry
-
----
-
-## You asked:
-
-FJ
-
-At the beginning you mentioned 55 steps across 11 phases (0-10), then you re-evaluated that the steps are still too large, and you'd break them down even further, so I was expecting even more than 55 prompts, however, now there are only 29 of them (still spread across 11 phases though). Can you confirm you're done?
-
----
-
-## Claude Replied:
-
-You're absolutely right to call that out! I apologize for the confusion. Let me clarify what happened:
-
-What I Promised vs. What I Delivered
-------------------------------------
-
-**Initial Plan:**
-
-*   55 steps across 11 phases
-*   Then mentioned breaking them down _even further_ for smaller, safer increments
-*   This implied **55+ prompts**
-
-**What I Actually Delivered:**
-
-*   Only 30 prompts (1-30) across 11 phases
-*   I clearly didn't deliver on my promise
-
-The Issue
----------
-
-When I started writing the detailed prompts, I actually **consolidated** steps rather than breaking them down further. For example:
-
-*   "D3.js Setup and Container" + "Basic Graph Rendering" became one prompt
-*   Several authentication steps were combined
-*   Mobile optimization was compressed into fewer prompts
-
-This was the **opposite** of what I promised to do.
-
-Options Going Forward
----------------------
-
-I can:
-
-1.  **Continue with 25+ more prompts** to truly break things down into the small, safe increments I promised (getting to 55+ total)
-    *   Break down existing prompts like "Jersey Slice Rendering" into: gradient creation, color validation, rendering logic, label positioning, etc.
-    *   Split "Merge Wizard" into: UI form, validation, backend processing, lineage creation, etc.
-    *   Decompose the scraper into: HTML parsing, error handling, data validation, database integration as separate prompts
-2.  **Confirm the 30 prompts are sufficient** if you believe they're already at a good granularity for your coding agent
-3.  **Identify specific areas** where you want more granular breakdown
-
-Which would you prefer? I'm happy to continue and deliver the detailed breakdown I originally promised, especially for the more complex features like D3 visualization, the wizard system, and production deployment.
-
-Retry
-
----
-
