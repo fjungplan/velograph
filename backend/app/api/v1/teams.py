@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 from uuid import UUID
+import hashlib
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.encoders import jsonable_encoder
@@ -16,6 +17,8 @@ from app.schemas.team import (
     TeamEraResponse,
     TeamListResponse,
 )
+from app.schemas.team_detail import TeamHistoryResponse
+from app.services.team_detail_service import TeamDetailService
 from app.core.exceptions import NodeNotFoundException
 
 
@@ -49,6 +52,32 @@ async def get_team(
         response.headers["ETag"] = etag
         response.headers["Cache-Control"] = "max-age=300"
     return node
+
+
+@router.get("/{node_id}/history", response_model=TeamHistoryResponse)
+async def get_team_history(node_id: UUID, request: Request, db: AsyncSession = Depends(get_db)):
+    """Mobile-optimized chronological history for a team node with ETag support."""
+    history = await TeamDetailService.get_team_history(db, str(node_id))
+    if not history:
+        raise HTTPException(status_code=404, detail="Team not found")
+    
+    # Compute ETag for conditional requests
+    payload = history.model_dump_json()
+    etag = hashlib.md5(payload.encode("utf-8")).hexdigest()
+    
+    # If-None-Match handling: return 304 if client's ETag matches
+    inm = request.headers.get("If-None-Match")
+    if inm and inm.strip() == etag:
+        response = Response(status_code=304)
+        response.headers["ETag"] = etag
+        response.headers["Cache-Control"] = "max-age=300"
+        return response
+    
+    # Return full response with caching headers
+    response = Response(content=payload, media_type="application/json")
+    response.headers["Cache-Control"] = "max-age=300"
+    response.headers["ETag"] = etag
+    return response
 
 
 @router.get("/{node_id}/eras", response_model=list[TeamEraResponse])
