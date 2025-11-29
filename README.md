@@ -33,6 +33,12 @@ This project tracks the lineage of professional cycling teams through time, visu
 
 🚧 **In Development** - Following incremental implementation via structured prompts
 
+### 📋 Implementation Guide
+
+The complete implementation plan is documented in `prompts/CTT_PP_CLAUDE_v2.md` - a 55-prompt structured guide covering all phases from foundation to deployment.
+
+⚠️ **IMPORTANT**: This file is **protected and should not be modified**. It serves as the authoritative reference for the entire project implementation. Any changes require explicit owner approval via PR review.
+
 ## CI: Postgres-Backed Backend Tests
 
 This repository runs a GitHub Actions job that boots Postgres 15, applies Alembic migrations, and executes the full backend test suite.

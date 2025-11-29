@@ -1,0 +1,12 @@
+# Protect critical project documentation from accidental modification
+prompts/CTT_PP_CLAUDE_v2.md merge=ours
+
+# Standard line ending handling
+* text=auto
+*.md text
+*.py text
+*.js text
+*.jsx text
+*.json text
+*.yml text
+*.yaml text
