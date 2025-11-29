@@ -131,23 +131,27 @@
 - [x] **Testing**: Added `tests/api/test_teams.py`; endpoints verified with SQLite fixtures and Postgres CI.
 
 ### Prompt 8: Lineage Graph Endpoint
-- [ ] **Endpoint**
-    - [ ] Create `GET /api/v1/timeline`.
-    - [ ] Params: `start_year`, `end_year`, `include_dissolved`.
-- [ ] **Service**
-    - [ ] Implement `TimelineService` (optimized join query).
-- [ ] **Graph Builder**
-    - [ ] Create `GraphBuilder` class to transform DB models to D3 Nodes/Links.
-- [ ] **Performance**: Ensure query uses `selectinload` and indexes.
+- [x] **Endpoint**
+    - [x] Create `GET /api/v1/timeline`.
+    - [x] Params: `start_year`, `end_year`, `include_dissolved`, `tier_filter`.
+- [x] **Service**
+    - [x] Implement `TimelineService` (optimized join query).
+- [x] **Graph Builder**
+    - [x] Create `GraphBuilder` class to transform DB models to D3 Nodes/Links.
+- [x] **Performance**: Ensure query uses `selectinload` and indexes.
+- [x] **Caching**: Implement ETag support for conditional requests (304 responses).
+- [x] **Testing**: Comprehensive test suite covering filters, lazy loading, ETags, graph invariants.
 
 ### Prompt 9: Team Detail (Mobile)
-- [ ] **Endpoint**
-    - [ ] Create `GET /api/v1/teams/{id}/history`.
-- [ ] **Logic**
-    - [ ] Implement `TeamDetailService`.
-    - [ ] Calculate status (`active`, `historical`, `dissolved`).
-    - [ ] Determine transition types (`REBRAND`, `ACQUISITION`, `REVIVAL`).
-- [ ] **Optimization**: Minimize payload size for mobile.
+- [x] **Endpoint**
+    - [x] Create `GET /api/v1/teams/{id}/history`.
+- [x] **Logic**
+    - [x] Implement `TeamDetailService`.
+    - [x] Calculate status (`active`, `historical`, `dissolved`).
+    - [x] Determine transition types (`REBRAND`, `ACQUISITION`, `REVIVAL`).
+- [x] **Optimization**: Minimize payload size for mobile.
+- [x] **Caching**: Implement ETag support with 304 responses.
+- [x] **Testing**: Tests for basic history, successor/predecessor relationships, not found cases.
 
 ---
 
