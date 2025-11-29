@@ -238,10 +238,12 @@
 ✅ Status: Implemented on branch `feature/prompt-18`. Tooltip component and CSS added; TooltipBuilder formats node/link content with sponsors and event details; TimelineGraph integrates tooltips on node/link hover with cursor tracking and on-screen positioning. All tests passing (47 frontend including tooltip tests, 138 backend). PR merged via squash.
 
 ### Prompt 19: Search & Navigation
-- [ ] **Search Bar**: Create component with fuzzy search logic.
-- [ ] **Navigation**: Implement `GraphNavigation` class.
-    - [ ] `focusOnNode`: Zoom and pan animation.
-    - [ ] `highlightPath`: Trace lineage path.
+- [x] **Search Bar**: Create component with fuzzy search logic.
+- [x] **Navigation**: Implement `GraphNavigation` class.
+    - [x] `focusOnNode`: Zoom and pan animation.
+    - [x] `highlightPath`: Trace lineage path.
+
+✅ **Status**: Implemented on branch `feature/prompt-19`. SearchBar component with fuzzy search across all eras and UCI codes; GraphNavigation utility with focusOnNode (animated zoom/pan to center node with highlight pulse) and highlightPath (BFS pathfinding with sequential link highlighting); integrated into TimelineGraph with data-id attributes on nodes/links; tests cover search ranking, era matching, result selection, and navigation methods. All tests passing (70 frontend, 138 backend). PR merged via squash.
 
 ### Prompt 20: Performance
 - [ ] **Virtualization**: Implement `ViewportManager` to cull off-screen nodes.

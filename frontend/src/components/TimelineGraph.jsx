@@ -9,7 +9,9 @@ import { ZoomLevelManager } from '../utils/zoomLevelManager';
 import { DetailRenderer } from '../utils/detailRenderer';
 import ControlPanel from './ControlPanel';
 import Tooltip from './Tooltip';
-import { TooltipBuilder } from '../utils/tooltipBuilder';
+import { TooltipBuilder } from '../utils/tooltipBuilder.jsx';
+import SearchBar from './SearchBar';
+import { GraphNavigation } from '../utils/graphNavigation';
 
 export default function TimelineGraph({ 
   data, 
@@ -24,6 +26,7 @@ export default function TimelineGraph({
   const zoomManager = useRef(null);
   const zoomBehavior = useRef(null);
   const currentLayout = useRef(null);
+  const navigationRef = useRef(null);
   
   const [zoomLevel, setZoomLevel] = useState('OVERVIEW');
   const [tooltip, setTooltip] = useState({ visible: false, content: null, position: null });
@@ -34,6 +37,15 @@ export default function TimelineGraph({
       setZoomLevel(level);
       updateDetailLevel(level, scale);
     });
+    
+    // Initialize navigation manager
+    if (svgRef.current && containerRef.current) {
+      navigationRef.current = new GraphNavigation(
+        svgRef.current,
+        containerRef.current.clientWidth,
+        containerRef.current.clientHeight
+      );
+    }
   }, []);
   
   useEffect(() => {
@@ -85,6 +97,12 @@ export default function TimelineGraph({
       .call(zoomBehavior.current.transform, d3.zoomIdentity);
   }, []);
   
+  const handleTeamSelect = useCallback((node) => {
+    if (navigationRef.current) {
+      navigationRef.current.focusOnNode(node);
+    }
+  }, []);
+  
   const renderGraph = (graphData) => {
     const container = containerRef.current;
     const width = container.clientWidth;
@@ -128,6 +146,7 @@ export default function TimelineGraph({
       .selectAll('path')
       .data(links)
       .join('path')
+        .attr('data-id', (d, i) => `link-${i}`)
         .attr('d', d => d.path)
         .attr('fill', 'none')
         .attr('stroke', d => 
@@ -170,6 +189,7 @@ export default function TimelineGraph({
       .data(nodes)
       .join('g')
         .attr('class', 'node')
+        .attr('data-id', d => d.id)
         .attr('transform', d => `translate(${d.x},${d.y})`)
         .style('cursor', 'pointer')
         .on('click', (event, d) => handleNodeClick(d))
@@ -221,6 +241,10 @@ export default function TimelineGraph({
 
   return (
     <div className="timeline-graph-wrapper">
+      <SearchBar 
+        nodes={data?.nodes || []}
+        onTeamSelect={handleTeamSelect}
+      />
       <ControlPanel 
         onYearRangeChange={onYearRangeChange}
         onTierFilterChange={onTierFilterChange}

@@ -1,3 +1,5 @@
+import React from 'react';
+
 export class TooltipBuilder {
   static buildNodeTooltip(node) {
     const latestEra = node.eras?.[node.eras.length - 1] || {};
