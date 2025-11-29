@@ -4,6 +4,7 @@ import { LayoutCalculator } from '../utils/layoutCalculator';
 import { validateGraphData } from '../utils/graphUtils';
 import { VISUALIZATION } from '../constants/visualization';
 import './TimelineGraph.css';
+import { JerseyRenderer } from '../utils/jerseyRenderer';
 
 export default function TimelineGraph({ data }) {
   const svgRef = useRef(null);
@@ -45,7 +46,7 @@ export default function TimelineGraph({ data }) {
     renderLinks(g, layout.links);
     
     // Render nodes
-    renderNodes(g, layout.nodes);
+    renderNodes(g, layout.nodes, svg);
     
     // Add zoom
     const zoom = d3.zoom()
@@ -77,31 +78,51 @@ export default function TimelineGraph({ data }) {
   };
   
   const renderNodes = (g, nodes) => {
+  const renderNodes = (g, nodes, svg) => {
+    // Create shadow filter once
+    JerseyRenderer.createShadowFilter(svg);
+
     const nodeGroups = g.append('g')
       .attr('class', 'nodes')
       .selectAll('g')
       .data(nodes)
       .join('g')
-        .attr('transform', d => `translate(${d.x},${d.y})`);
-    
-    // For now, render as simple rectangles
-    nodeGroups.append('rect')
-      .attr('width', d => d.width)
-      .attr('height', d => d.height)
-      .attr('fill', '#4A90E2')
-      .attr('stroke', '#333')
-      .attr('stroke-width', 1)
-      .attr('rx', 4);
-    
-    // Add team name
-    nodeGroups.append('text')
-      .attr('x', d => d.width / 2)
-      .attr('y', d => d.height / 2)
-      .attr('text-anchor', 'middle')
-      .attr('dominant-baseline', 'middle')
-      .attr('fill', 'white')
-      .attr('font-size', '12px')
-      .text(d => d.eras[0]?.name || 'Unknown');
+        .attr('class', 'node')
+        .attr('transform', d => `translate(${d.x},${d.y})`)
+        .style('cursor', 'pointer')
+        .on('click', (event, d) => handleNodeClick(d))
+        .on('mouseenter', (event, d) => handleNodeHover(event, d))
+        .on('mouseleave', handleNodeHoverEnd);
+
+    // Render each node with jersey styling
+    nodeGroups.each(function(d) {
+      const group = d3.select(this);
+      JerseyRenderer.renderNode(group, d, svg);
+      JerseyRenderer.addNodeLabel(group, d);
+    });
+  };
+
+  const handleNodeClick = (node) => {
+    console.log('Clicked node:', node);
+    // TODO: Navigate to team detail page
+  };
+
+  const handleNodeHover = (event, node) => {
+    d3.select(event.currentTarget)
+      .select('rect')
+      .transition()
+      .duration(200)
+      .attr('stroke-width', 3)
+      .attr('stroke', '#FFD700'); // Gold highlight
+  };
+
+  const handleNodeHoverEnd = (event) => {
+    d3.select(event.currentTarget)
+      .select('rect')
+      .transition()
+      .duration(200)
+      .attr('stroke-width', 2)
+      .attr('stroke', '#333');
   };
 
   return (
