@@ -1,0 +1,8 @@
+# CODEOWNERS - Require review for protected files
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Critical project documentation - requires owner approval
+prompts/CTT_PP_CLAUDE_v2.md @fjungplan
+
+# Default owner for all other files
+* @fjungplan
