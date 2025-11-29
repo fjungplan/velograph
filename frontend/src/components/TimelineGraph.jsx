@@ -8,6 +8,8 @@ import { JerseyRenderer } from '../utils/jerseyRenderer';
 import { ZoomLevelManager } from '../utils/zoomLevelManager';
 import { DetailRenderer } from '../utils/detailRenderer';
 import ControlPanel from './ControlPanel';
+import Tooltip from './Tooltip';
+import { TooltipBuilder } from '../utils/tooltipBuilder';
 
 export default function TimelineGraph({ 
   data, 
@@ -24,6 +26,7 @@ export default function TimelineGraph({
   const currentLayout = useRef(null);
   
   const [zoomLevel, setZoomLevel] = useState('OVERVIEW');
+  const [tooltip, setTooltip] = useState({ visible: false, content: null, position: null });
   
   useEffect(() => {
     // Initialize zoom manager
@@ -135,7 +138,26 @@ export default function TimelineGraph({
         .attr('stroke-width', VISUALIZATION.LINK_STROKE_WIDTH)
         .attr('stroke-dasharray', d => 
           d.type === 'SPIRITUAL_SUCCESSION' ? '5,5' : '0'
-        );
+        )
+        .style('cursor', 'pointer')
+        .on('mouseenter', (event, d) => {
+          d3.select(event.currentTarget)
+            .attr('stroke-width', VISUALIZATION.LINK_STROKE_WIDTH * 2);
+          const content = TooltipBuilder.buildLinkTooltip(d, currentLayout.current?.nodes || []);
+          if (content) {
+            setTooltip({ visible: true, content, position: { x: event.pageX, y: event.pageY } });
+          }
+        })
+        .on('mousemove', (event) => {
+          if (tooltip.visible) {
+            setTooltip(prev => ({ ...prev, position: { x: event.pageX, y: event.pageY } }));
+          }
+        })
+        .on('mouseleave', (event) => {
+          d3.select(event.currentTarget)
+            .attr('stroke-width', VISUALIZATION.LINK_STROKE_WIDTH);
+          setTooltip({ visible: false, content: null, position: null });
+        });
   };
   
   const renderNodes = (g, nodes, svg) => {
@@ -151,8 +173,20 @@ export default function TimelineGraph({
         .attr('transform', d => `translate(${d.x},${d.y})`)
         .style('cursor', 'pointer')
         .on('click', (event, d) => handleNodeClick(d))
-        .on('mouseenter', (event, d) => handleNodeHover(event, d))
-        .on('mouseleave', handleNodeHoverEnd);
+        .on('mouseenter', (event, d) => {
+          handleNodeHover(event, d);
+          const content = TooltipBuilder.buildNodeTooltip(d);
+          setTooltip({ visible: true, content, position: { x: event.pageX, y: event.pageY } });
+        })
+        .on('mousemove', (event) => {
+          if (tooltip.visible) {
+            setTooltip(prev => ({ ...prev, position: { x: event.pageX, y: event.pageY } }));
+          }
+        })
+        .on('mouseleave', (event) => {
+          handleNodeHoverEnd(event);
+          setTooltip({ visible: false, content: null, position: null });
+        });
 
     // Render each node with jersey styling
     nodeGroups.each(function(d) {
@@ -204,6 +238,11 @@ export default function TimelineGraph({
       >
         <svg ref={svgRef}></svg>
       </div>
+      <Tooltip 
+        content={tooltip.content}
+        position={tooltip.position}
+        visible={tooltip.visible}
+      />
     </div>
   );
 }

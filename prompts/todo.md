@@ -231,9 +231,11 @@
 ✅ Status: Implemented on branch `feature/prompt-17`. ZoomLevelManager detects zoom level transitions at 1.2x threshold. DetailRenderer adds arrowheads and era timelines at detail zoom. ControlPanel provides year range and tier filtering with apply/reset controls. HomePage wired to update timeline query params. All tests passing (45 frontend including 23 new tests, 138 backend).
 
 ### Prompt 18: Tooltips
-- [ ] **Component**: Create floating `Tooltip` component.
-- [ ] **Builder**: Implement `TooltipBuilder` for Node and Link data.
-- [ ] **Events**: detailed hover states in D3.
+- [x] **Component**: Create floating `Tooltip` component.
+- [x] **Builder**: Implement `TooltipBuilder` for Node and Link data.
+- [x] **Events**: detailed hover states in D3.
+
+✅ Status: Implemented on branch `feature/prompt-18`. Tooltip component and CSS added; TooltipBuilder formats node/link content with sponsors and event details; TimelineGraph integrates tooltips on node/link hover with cursor tracking and on-screen positioning. All tests passing (47 frontend including tooltip tests, 138 backend). PR merged via squash.
 
 ### Prompt 19: Search & Navigation
 - [ ] **Search Bar**: Create component with fuzzy search logic.
