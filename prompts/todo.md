@@ -221,12 +221,14 @@
 - [x] **Colors**: Implement `colorUtils` (hex validation, contrast).
 - [x] **Integration**: Update `TimelineGraph` to use new renderer.
 
-✅ Status: Implemented on branch `feature/prompt-16-jersey-renderer`. Frontend tests (Vitest) added and passing for jerseyRenderer and colorUtils; timeline layout tests updated and passing. Backend GraphBuilder now includes sponsor data with validated hex colors and rank ordering.
+✅ Status: Implemented and merged via PR #14. Frontend tests (Vitest) added and passing for jerseyRenderer and colorUtils; timeline layout tests updated and passing. Backend GraphBuilder now includes sponsor data with validated hex colors and rank ordering.
 
 ### Prompt 17: Interactive Controls
-- [ ] **Zoom Manager**: Create `ZoomLevelManager` (Overview vs. Detail).
-- [ ] **Detail Renderer**: Implement logic to show arrows/era-segments only on zoom.
-- [ ] **UI**: Create `ControlPanel` (Year range sliders, Tier checkboxes).
+- [x] **Zoom Manager**: Create `ZoomLevelManager` (Overview vs. Detail).
+- [x] **Detail Renderer**: Implement logic to show arrows/era-segments only on zoom.
+- [x] **UI**: Create `ControlPanel` (Year range sliders, Tier checkboxes).
+
+✅ Status: Implemented on branch `feature/prompt-17`. ZoomLevelManager detects zoom level transitions at 1.2x threshold. DetailRenderer adds arrowheads and era timelines at detail zoom. ControlPanel provides year range and tier filtering with apply/reset controls. HomePage wired to update timeline query params. All tests passing (45 frontend including 23 new tests, 138 backend).
 
 ### Prompt 18: Tooltips
 - [ ] **Component**: Create floating `Tooltip` component.

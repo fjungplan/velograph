@@ -1,0 +1,120 @@
+.control-panel {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  width: 280px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+.control-section {
+  margin-bottom: 20px;
+}
+
+.control-section:last-of-type {
+  margin-bottom: 0;
+}
+
+.control-section h3 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.year-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.year-inputs label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: #666;
+}
+
+.year-inputs input[type="number"] {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.year-inputs input[type="number"]:focus {
+  outline: none;
+  border-color: #4A90E2;
+}
+
+.tier-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tier-checkboxes label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #333;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tier-checkboxes input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.control-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+
+.control-actions button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.control-actions button:first-child {
+  background-color: #4A90E2;
+  color: white;
+}
+
+.control-actions button:first-child:hover {
+  background-color: #357ABD;
+}
+
+.control-actions button:last-child {
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+.control-actions button:last-child:hover {
+  background-color: #e0e0e0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .control-panel {
+    position: static;
+    width: 100%;
+    margin-bottom: 20px;
+    border-radius: 0;
+  }
+}

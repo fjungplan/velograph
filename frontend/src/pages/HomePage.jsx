@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTimeline } from '../hooks/useTeamData';
 import { useResponsive } from '../hooks/useResponsive';
 import { LoadingSpinner } from '../components/Loading';
@@ -7,10 +8,30 @@ import './HomePage.css';
 
 function HomePage() {
   const { isMobile } = useResponsive();
-  const { data, isLoading, error, refetch } = useTimeline({
+  const currentYear = new Date().getFullYear();
+  
+  const [filters, setFilters] = useState({
     start_year: 2020,
-    end_year: 2024,
+    end_year: currentYear,
+    tier_filter: [1, 2, 3]
   });
+  
+  const { data, isLoading, error, refetch } = useTimeline(filters);
+  
+  const handleYearRangeChange = (startYear, endYear) => {
+    setFilters(prev => ({
+      ...prev,
+      start_year: startYear,
+      end_year: endYear
+    }));
+  };
+  
+  const handleTierFilterChange = (tiers) => {
+    setFilters(prev => ({
+      ...prev,
+      tier_filter: tiers.length > 0 ? tiers : null
+    }));
+  };
 
   if (isLoading) {
     return <LoadingSpinner message="Loading timeline..." size="lg" />;
@@ -36,7 +57,14 @@ function HomePage() {
       </div>
     </div>
   ) : (
-    <TimelineGraph data={data} />
+    <TimelineGraph 
+      data={data} 
+      onYearRangeChange={handleYearRangeChange}
+      onTierFilterChange={handleTierFilterChange}
+      initialStartYear={filters.start_year}
+      initialEndYear={filters.end_year}
+      initialTiers={filters.tier_filter || [1, 2, 3]}
+    />
   );
 }
 
