@@ -1,14 +1,37 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import * as d3 from 'd3';
 import { LayoutCalculator } from '../utils/layoutCalculator';
 import { validateGraphData } from '../utils/graphUtils';
 import { VISUALIZATION } from '../constants/visualization';
 import './TimelineGraph.css';
 import { JerseyRenderer } from '../utils/jerseyRenderer';
+import { ZoomLevelManager } from '../utils/zoomLevelManager';
+import { DetailRenderer } from '../utils/detailRenderer';
+import ControlPanel from './ControlPanel';
 
-export default function TimelineGraph({ data }) {
+export default function TimelineGraph({ 
+  data, 
+  onYearRangeChange, 
+  onTierFilterChange,
+  initialStartYear = 2020,
+  initialEndYear = new Date().getFullYear(),
+  initialTiers = [1, 2, 3]
+}) {
   const svgRef = useRef(null);
   const containerRef = useRef(null);
+  const zoomManager = useRef(null);
+  const zoomBehavior = useRef(null);
+  const currentLayout = useRef(null);
+  
+  const [zoomLevel, setZoomLevel] = useState('OVERVIEW');
+  
+  useEffect(() => {
+    // Initialize zoom manager
+    zoomManager.current = new ZoomLevelManager((level, scale) => {
+      setZoomLevel(level);
+      updateDetailLevel(level, scale);
+    });
+  }, []);
   
   useEffect(() => {
     if (!data || !data.nodes || !data.links) return;
@@ -21,6 +44,44 @@ export default function TimelineGraph({ data }) {
       }
   }, [data]);
   
+  const updateDetailLevel = useCallback((level, scale) => {
+    if (!currentLayout.current) return;
+    
+    const g = d3.select(svgRef.current).select('g');
+    
+    if (level === 'DETAIL') {
+      // Show detailed features
+      DetailRenderer.renderDetailedLinks(g, currentLayout.current.links, scale);
+      
+      // Render era timelines
+      g.selectAll('.node').each(function(d) {
+        const group = d3.select(this);
+        DetailRenderer.renderEraTimeline(group, d, scale);
+      });
+    } else {
+      // Hide detailed features
+      g.selectAll('.era-segment').remove();
+      g.selectAll('.links path').attr('marker-end', null);
+    }
+  }, []);
+  
+  const handleZoom = useCallback((event) => {
+    const { transform } = event;
+    const g = d3.select(svgRef.current).select('g');
+    g.attr('transform', transform);
+    
+    if (zoomManager.current) {
+      zoomManager.current.updateScale(transform.k);
+    }
+  }, []);
+  
+  const handleZoomReset = useCallback(() => {
+    const svg = d3.select(svgRef.current);
+    svg.transition()
+      .duration(750)
+      .call(zoomBehavior.current.transform, d3.zoomIdentity);
+  }, []);
+  
   const renderGraph = (graphData) => {
     const container = containerRef.current;
     const width = container.clientWidth;
@@ -29,6 +90,7 @@ export default function TimelineGraph({ data }) {
     // Calculate layout
     const calculator = new LayoutCalculator(graphData, width, height);
     const layout = calculator.calculateLayout();
+    currentLayout.current = layout;
     
     // Clear previous render
     const svg = d3.select(svgRef.current)
@@ -51,10 +113,9 @@ export default function TimelineGraph({ data }) {
     // Add zoom
     const zoom = d3.zoom()
       .scaleExtent([VISUALIZATION.ZOOM_MIN, VISUALIZATION.ZOOM_MAX])
-      .on('zoom', (event) => {
-        g.attr('transform', event.transform);
-      });
+      .on('zoom', handleZoom);
     
+    zoomBehavior.current = zoom;
     svg.call(zoom);
   };
   
@@ -125,11 +186,24 @@ export default function TimelineGraph({ data }) {
   };
 
   return (
-    <div 
-      ref={containerRef} 
-      className="timeline-graph-container"
-    >
-      <svg ref={svgRef}></svg>
+    <div className="timeline-graph-wrapper">
+      <ControlPanel 
+        onYearRangeChange={onYearRangeChange}
+        onTierFilterChange={onTierFilterChange}
+        onZoomReset={handleZoomReset}
+        initialStartYear={initialStartYear}
+        initialEndYear={initialEndYear}
+        initialTiers={initialTiers}
+      />
+      <div className="zoom-indicator">
+        Zoom Level: {zoomLevel}
+      </div>
+      <div 
+        ref={containerRef} 
+        className="timeline-graph-container"
+      >
+        <svg ref={svgRef}></svg>
+      </div>
     </div>
   );
 }
