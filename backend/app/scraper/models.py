@@ -11,7 +11,7 @@ class ScrapedTeamData(BaseModel):
     uci_code: Optional[str] = None
     founding_year: Optional[int] = None
     dissolution_year: Optional[int] = None
-    current_tier: Optional[int] = None
+    tier: Optional[str] = None  # 'WT', 'PT', 'CT'
     sponsors: List[str] = []
 
 
@@ -19,7 +19,11 @@ class ScraperResult(BaseModel):
     """Result from scraping operation"""
 
     success: bool
-    team_identifier: str
     data: Optional[ScrapedTeamData] = None
     error: Optional[str] = None
-    scraped_at: datetime
+    timestamp: datetime = None
+    
+    def __init__(self, **data):
+        if 'timestamp' not in data:
+            data['timestamp'] = datetime.utcnow()
+        super().__init__(**data)
