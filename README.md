@@ -81,6 +81,35 @@ Notes:
 - The in-memory SQLite fixtures are still used for fast unit tests; the Postgres workflow validates Alembic migrations and DB connectivity.
 - The app’s `alembic/env.py` reads `DATABASE_URL` from the environment via `app.core.config.Settings`.
 
+## Development Notes
+
+### Async Pitfalls & Eager-Loading Strategy
+
+The backend uses SQLAlchemy async sessions. **Critical**: Avoid lazy-loading relationships in async contexts - it causes `MissingGreenlet` errors.
+
+**Best practices:**
+- Always use `selectinload()` in repository queries to eager-load relationships
+- Services should never trigger lazy-loads during serialization
+- Use DTO builders (`backend/app/services/dto.py`) for consistent data shaping
+- Run guard tests (`backend/tests/api/test_no_lazy_load.py`) to catch regressions
+
+**Windows CI:**
+- Tests use `python -X faulthandler -m pytest -q` to handle asyncio shutdown issues
+- Post-test access violations during garbage collection are expected and don't affect results
+- See `.github/workflows/python-tests.yml` for CI configuration
+
+### Caching & Performance
+
+**ETag Support:**
+- Timeline and teams endpoints return `Cache-Control: max-age=300` and weak `ETag` headers
+- Clients can send `If-None-Match` to receive `304 Not Modified` when content unchanged
+- See `backend/app/core/etag.py` for ETag computation from canonical JSON
+
+**Timeline Cache:**
+- Optional in-memory cache for timeline graph (see `backend/app/core/config.py`)
+- Invalidated automatically on data changes affecting timeline
+- Manual invalidation: `POST /api/v1/admin/cache/invalidate`
+
 ## Getting Started
 
 _(Instructions will be added after initial setup)_
