@@ -131,41 +131,47 @@
 - [x] **Testing**: Added `tests/api/test_teams.py`; endpoints verified with SQLite fixtures and Postgres CI.
 
 ### Prompt 8: Lineage Graph Endpoint
-- [ ] **Endpoint**
-    - [ ] Create `GET /api/v1/timeline`.
-    - [ ] Params: `start_year`, `end_year`, `include_dissolved`.
-- [ ] **Service**
-    - [ ] Implement `TimelineService` (optimized join query).
-- [ ] **Graph Builder**
-    - [ ] Create `GraphBuilder` class to transform DB models to D3 Nodes/Links.
-- [ ] **Performance**: Ensure query uses `selectinload` and indexes.
+- [x] **Endpoint**
+    - [x] Create `GET /api/v1/timeline`.
+    - [x] Params: `start_year`, `end_year`, `include_dissolved`, `tier_filter`.
+- [x] **Service**
+    - [x] Implement `TimelineService` (optimized join query).
+- [x] **Graph Builder**
+    - [x] Create `GraphBuilder` class to transform DB models to D3 Nodes/Links.
+- [x] **Performance**: Ensure query uses `selectinload` and indexes.
+- [x] **Caching**: Implement ETag support for conditional requests (304 responses).
+- [x] **Testing**: Comprehensive test suite covering filters, lazy loading, ETags, graph invariants.
 
 ### Prompt 9: Team Detail (Mobile)
-- [ ] **Endpoint**
-    - [ ] Create `GET /api/v1/teams/{id}/history`.
-- [ ] **Logic**
-    - [ ] Implement `TeamDetailService`.
-    - [ ] Calculate status (`active`, `historical`, `dissolved`).
-    - [ ] Determine transition types (`REBRAND`, `ACQUISITION`, `REVIVAL`).
-- [ ] **Optimization**: Minimize payload size for mobile.
+- [x] **Endpoint**
+    - [x] Create `GET /api/v1/teams/{id}/history`.
+- [x] **Logic**
+    - [x] Implement `TeamDetailService`.
+    - [x] Calculate status (`active`, `historical`, `dissolved`).
+    - [x] Determine transition types (`REBRAND`, `ACQUISITION`, `REVIVAL`).
+- [x] **Optimization**: Minimize payload size for mobile.
+- [x] **Caching**: Implement ETag support with 304 responses.
+- [x] **Testing**: Tests for basic history, successor/predecessor relationships, not found cases.
 
 ---
 
 ## Phase 3: Basic Frontend Shell
 
 ### Prompt 10: React Setup & Routing
-- [ ] **Dependencies**: Install `react-router-dom`, `axios`, `@tanstack/react-query`, `d3`.
-- [ ] **API Client**: Configure axios instance with interceptors.
-- [ ] **Routing**: Setup `App.jsx` with `BrowserRouter`.
-- [ ] **Pages**: Create stubs for `HomePage`, `TeamDetailPage`, `NotFoundPage`.
-- [ ] **Layout**: Create responsive `Layout` component.
+- [x] **Dependencies**: Installed `react-router-dom`, `axios`, `@tanstack/react-query`, `d3`.
+- [x] **API Client**: Configured axios instance with interceptors (`src/api/client.js`).
+- [x] **Routing**: Set up `App.jsx` with `BrowserRouter`, nested routes and `Layout` wrapper.
+- [x] **Pages**: Created `HomePage`, `TeamDetailPage`, `NotFoundPage`.
+- [x] **Layout**: Implemented responsive `Layout` component with mobile-first CSS.
+✅ Completed via branches `frontend/prompt-10-react-setup` merged into `main`.
 
 ### Prompt 11: Loading & Error UI
-- [ ] **Components**
-    - [ ] Create `LoadingSpinner` and `LoadingSkeleton`.
-    - [ ] Create `ErrorDisplay` and `ErrorBoundary`.
-- [ ] **Hooks**: Implement `useTimeline` and `useTeamHistory` using React Query.
-- [ ] **Integration**: Wrap App in `QueryClientProvider`.
+- [x] **Components**
+    - [x] Created `LoadingSpinner` and `LoadingSkeleton`.
+    - [x] Created `ErrorDisplay` and `ErrorBoundary`.
+- [x] **Hooks**: Implemented `useTimeline`, `useTeamHistory`, `useTeams` using React Query.
+- [x] **Integration**: Wrapped App in `QueryClientProvider` (`main.jsx`) and added global error boundary.
+✅ Completed via branch `frontend/prompt-11-loading-error-handling` merged into `main`; all backend tests still pass (96/96).
 
 ---
 
