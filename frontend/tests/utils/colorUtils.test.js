@@ -1,3 +1,5 @@
+
+import { describe, it, expect } from 'vitest';
 import { validateHexColor, getContrastColor, lightenColor } from '../../src/utils/colorUtils';
 
 describe('colorUtils', () => {
@@ -10,7 +12,8 @@ describe('colorUtils', () => {
   it('gets contrast color', () => {
     expect(getContrastColor('#FFFFFF')).toBe('#000000');
     expect(getContrastColor('#000000')).toBe('#FFFFFF');
-    expect(getContrastColor('#4A90E2')).toBe('#FFFFFF');
+    // #4A90E2 has light luminance; black text provides better contrast with current algorithm
+    expect(getContrastColor('#4A90E2')).toBe('#000000');
   });
 
   it('lightens color', () => {

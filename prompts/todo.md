@@ -206,8 +206,6 @@
 ✅ Status: Implemented and merged via PR #12. D3.js installed, TimelineGraph component with zoom, graph utilities (validateGraphData, getGraphBounds), visualization constants, useResponsive hook, HomePage integration with conditional rendering.
 
 ### Prompt 15: Layout Algorithm
-
-### Prompt 15: Layout Algorithm
 - [x] **Calculator**: Create `LayoutCalculator` class.
     - [x] X-Axis: Based on `founding_year`.
     - [x] Y-Axis: Grouped by Tier level.
@@ -217,11 +215,13 @@
 ✅ Status: Implemented and merged via PR #13. LayoutCalculator with year-based X positioning, tier-based Y grouping, dynamic node widths, Bezier curve paths. Nodes render as blue rectangles, links differentiate spiritual (dashed) vs legal (solid). Comprehensive test suite created.
 
 ### Prompt 16: Jersey Slice Rendering
-- [ ] **Renderer**: Implement `JerseyRenderer` class.
-    - [ ] Generate SVG gradients based on sponsor colors/prominence.
-    - [ ] Apply shadow filters.
-- [ ] **Colors**: Implement `colorUtils` (hex validation, contrast).
-- [ ] **Integration**: Update `TimelineGraph` to use new renderer.
+- [x] **Renderer**: Implement `JerseyRenderer` class.
+    - [x] Generate SVG gradients based on sponsor colors/prominence.
+    - [x] Apply shadow filters.
+- [x] **Colors**: Implement `colorUtils` (hex validation, contrast).
+- [x] **Integration**: Update `TimelineGraph` to use new renderer.
+
+✅ Status: Implemented on branch `feature/prompt-16-jersey-renderer`. Frontend tests (Vitest) added and passing for jerseyRenderer and colorUtils; timeline layout tests updated and passing. Backend GraphBuilder now includes sponsor data with validated hex colors and rank ordering.
 
 ### Prompt 17: Interactive Controls
 - [ ] **Zoom Manager**: Create `ZoomLevelManager` (Overview vs. Detail).

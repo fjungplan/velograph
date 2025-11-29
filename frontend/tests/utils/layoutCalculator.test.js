@@ -98,28 +98,30 @@ describe('LayoutCalculator', () => {
   });
 
   describe('calculateNodeWidth', () => {
-    it('should calculate width for dissolved team', () => {
+    it('should calculate width for dissolved team (respects min width)', () => {
       const graphData = createMockGraphData();
       const calculator = new LayoutCalculator(graphData, 1000, 800);
       const node = graphData.nodes[0]; // 2010-2015, 5 years
 
       const width = calculator.calculateNodeWidth(node);
       
-      // Width should be based on year span
-      const expectedWidth = 5 * (VISUALIZATION.YEAR_WIDTH / 10);
+      // Width should be based on year span but not below minimum
+      const spanWidth = 5 * (VISUALIZATION.YEAR_WIDTH / 10);
+      const expectedWidth = Math.max(VISUALIZATION.MIN_NODE_WIDTH, spanWidth);
       expect(width).toBe(expectedWidth);
     });
 
-    it('should calculate width for active team (no dissolution)', () => {
+    it('should calculate width for active team (no dissolution, respects min width)', () => {
       const graphData = createMockGraphData();
       const calculator = new LayoutCalculator(graphData, 1000, 800);
       const node = graphData.nodes[1]; // 2012-present
 
       const width = calculator.calculateNodeWidth(node);
       
-      // Width should be from founding to max year in data
+      // Width should be from founding to max year in data but not below minimum
       const expectedYearSpan = 2014 - 2012; // 2 years
-      const expectedWidth = expectedYearSpan * (VISUALIZATION.YEAR_WIDTH / 10);
+      const spanWidth = expectedYearSpan * (VISUALIZATION.YEAR_WIDTH / 10);
+      const expectedWidth = Math.max(VISUALIZATION.MIN_NODE_WIDTH, spanWidth);
       expect(width).toBe(expectedWidth);
     });
 
@@ -268,7 +270,7 @@ describe('LayoutCalculator', () => {
       const calculator = new LayoutCalculator(graphData, 1000, 800);
 
       // Should not throw
-      expect(() => calculator.calculateYearRange()).toThrow();
+      expect(() => calculator.calculateYearRange()).not.toThrow();
     });
 
     it('should handle nodes with no links', () => {
