@@ -77,7 +77,6 @@ export default function TimelineGraph({ data }) {
         );
   };
   
-  const renderNodes = (g, nodes) => {
   const renderNodes = (g, nodes, svg) => {
     // Create shadow filter once
     JerseyRenderer.createShadowFilter(svg);
