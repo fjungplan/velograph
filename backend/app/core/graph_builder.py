@@ -6,13 +6,16 @@ from app.services.dto import build_team_summary_dto, build_timeline_era_dto
 
 class GraphBuilder:
     def build_jersey_composition(self, era: TeamEra) -> List[Dict]:
-        # Kept for backward compatibility if used elsewhere; DTO now handles sponsors.
         sponsors = []
-        for link in getattr(era, "sponsors_ordered", []) or []:
+        for link in sorted(getattr(era, "sponsor_links", []), key=lambda l: getattr(l, "rank_order", 0)):
             brand = getattr(link, "brand", None)
+            # Defensive: prefer default_hex_color, fallback to #4A90E2
+            color = getattr(brand, "default_hex_color", None)
+            if not color or not isinstance(color, str) or not color.startswith('#') or len(color) != 7:
+                color = '#4A90E2'
             sponsors.append({
                 "brand": brand.brand_name if brand else None,
-                "color": getattr(brand, "color_hex", None) or getattr(brand, "default_hex_color", None),
+                "color": color,
                 "prominence": link.prominence_percent,
             })
         return sponsors
