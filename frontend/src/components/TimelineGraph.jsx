@@ -12,6 +12,9 @@ import Tooltip from './Tooltip';
 import { TooltipBuilder } from '../utils/tooltipBuilder.jsx';
 import SearchBar from './SearchBar';
 import { GraphNavigation } from '../utils/graphNavigation';
+import { ViewportManager } from '../utils/virtualization';
+import { PerformanceMonitor } from '../utils/performanceMonitor';
+import { OptimizedRenderer } from '../utils/optimizedRenderer';
 
 export default function TimelineGraph({ 
   data, 
@@ -27,6 +30,11 @@ export default function TimelineGraph({
   const zoomBehavior = useRef(null);
   const currentLayout = useRef(null);
   const navigationRef = useRef(null);
+  const viewportManager = useRef(null);
+  const performanceMonitor = useRef(new PerformanceMonitor());
+  const optimizedRenderer = useRef(null);
+  const currentTransform = useRef(d3.zoomIdentity);
+  const virtualizationTimeout = useRef(null);
   
   const [zoomLevel, setZoomLevel] = useState('OVERVIEW');
   const [tooltip, setTooltip] = useState({ visible: false, content: null, position: null });
@@ -45,6 +53,28 @@ export default function TimelineGraph({
         containerRef.current.clientWidth,
         containerRef.current.clientHeight
       );
+    }
+
+    // Initialize viewport and optimized renderer
+    if (containerRef.current && svgRef.current) {
+      viewportManager.current = new ViewportManager(
+        containerRef.current.clientWidth,
+        containerRef.current.clientHeight
+      );
+      optimizedRenderer.current = new OptimizedRenderer(
+        svgRef.current,
+        performanceMonitor.current
+      );
+    }
+  }, []);
+
+  // Log performance metrics in development
+  useEffect(() => {
+    if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'development') {
+      const interval = setInterval(() => {
+        performanceMonitor.current.logMetrics();
+      }, 10000);
+      return () => clearInterval(interval);
     }
   }, []);
   
@@ -84,7 +114,6 @@ export default function TimelineGraph({
     const { transform } = event;
     const g = d3.select(svgRef.current).select('g');
     g.attr('transform', transform);
-    
     if (zoomManager.current) {
       zoomManager.current.updateScale(transform.k);
     }
@@ -108,36 +137,160 @@ export default function TimelineGraph({
     const width = container.clientWidth;
     const height = container.clientHeight;
     
-    // Calculate layout
+    const layoutStart = performanceMonitor.current.startTiming('layout');
     const calculator = new LayoutCalculator(graphData, width, height);
     const layout = calculator.calculateLayout();
+    performanceMonitor.current.endTiming('layout', layoutStart);
+    performanceMonitor.current.metrics.nodeCount = layout.nodes.length;
+    performanceMonitor.current.metrics.linkCount = layout.links.length;
     currentLayout.current = layout;
-    
-    // Clear previous render
-    const svg = d3.select(svgRef.current)
+
+    renderWithVirtualization(layout);
+  };
+
+  const renderWithVirtualization = useCallback((layout) => {
+    if (!viewportManager.current) return;
+    const container = containerRef.current;
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    const transform = currentTransform.current;
+
+    const visibleNodes = viewportManager.current.getVisibleNodes(layout.nodes, transform);
+    const visibleNodeIds = new Set(visibleNodes.map((n) => n.id));
+    const visibleLinks = viewportManager.current.getVisibleLinks(layout.links, visibleNodeIds);
+
+    const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
-    
-    // Set dimensions
-    svg
-      .attr('width', width)
-      .attr('height', height);
-    
-    // Create main group
-    const g = svg.append('g');
-    
-    // Render links first (so nodes appear on top)
-    renderLinks(g, layout.links);
-    
-    // Render nodes
-    renderNodes(g, layout.nodes, svg);
-    
-    // Add zoom
-    const zoom = d3.zoom()
+    svg.attr('width', width).attr('height', height);
+
+    const g = svg.append('g').attr('transform', transform);
+    renderLinks(g, visibleLinks);
+    renderNodes(g, visibleNodes, svg);
+
+    setupZoomWithVirtualization(svg, g, layout);
+  }, []);
+
+  const setupZoomWithVirtualization = (svg, g, layout) => {
+    const zoom = d3
+      .zoom()
       .scaleExtent([VISUALIZATION.ZOOM_MIN, VISUALIZATION.ZOOM_MAX])
-      .on('zoom', handleZoom);
-    
+      .on('zoom', (event) => {
+        currentTransform.current = event.transform;
+        g.attr('transform', event.transform);
+
+        // Zoom level manager and LOD updates
+        if (zoomManager.current) {
+          zoomManager.current.updateScale(event.transform.k);
+        }
+        if (optimizedRenderer.current) {
+          optimizedRenderer.current.renderWithLOD(
+            currentLayout.current?.nodes || [],
+            currentLayout.current?.links || [],
+            event.transform.k
+          );
+        }
+
+        // Debounce virtualization updates
+        clearTimeout(virtualizationTimeout.current);
+        virtualizationTimeout.current = setTimeout(() => {
+          updateVirtualization(layout, event.transform);
+        }, 100);
+      });
     zoomBehavior.current = zoom;
     svg.call(zoom);
+  };
+
+  const updateVirtualization = (layout, transform) => {
+    if (!viewportManager.current) return;
+
+    const visibleNodes = viewportManager.current.getVisibleNodes(layout.nodes, transform);
+    const visibleNodeIds = new Set(visibleNodes.map((n) => n.id));
+    const visibleLinks = viewportManager.current.getVisibleLinks(layout.links, visibleNodeIds);
+
+    const g = d3.select(svgRef.current).select('g');
+
+    // Update links
+    const linkSel = g
+      .select('.links')
+      .selectAll('path')
+      .data(visibleLinks, (d, i) => `link-${i}`);
+
+    linkSel
+      .join(
+        (enter) =>
+          enter
+            .append('path')
+            .attr('d', (d) => d.path)
+            .attr('fill', 'none')
+            .attr('stroke', (d) =>
+              d.type === 'SPIRITUAL_SUCCESSION' ? VISUALIZATION.LINK_COLOR_SPIRITUAL : VISUALIZATION.LINK_COLOR_LEGAL
+            )
+            .attr('stroke-width', VISUALIZATION.LINK_STROKE_WIDTH)
+            .attr('stroke-dasharray', (d) => (d.type === 'SPIRITUAL_SUCCESSION' ? '5,5' : '0'))
+            .style('cursor', 'pointer')
+            .on('mouseenter', (event, d) => {
+              d3.select(event.currentTarget).attr('stroke-width', VISUALIZATION.LINK_STROKE_WIDTH * 2);
+              const content = TooltipBuilder.buildLinkTooltip(d, currentLayout.current?.nodes || []);
+              if (content) {
+                setTooltip({ visible: true, content, position: { x: event.pageX, y: event.pageY } });
+              }
+            })
+            .on('mousemove', (event) => {
+              if (tooltip.visible) {
+                setTooltip((prev) => ({ ...prev, position: { x: event.pageX, y: event.pageY } }));
+              }
+            })
+            .on('mouseleave', (event) => {
+              d3.select(event.currentTarget).attr('stroke-width', VISUALIZATION.LINK_STROKE_WIDTH);
+              setTooltip({ visible: false, content: null, position: null });
+            }),
+        (update) => update,
+        (exit) => exit.remove()
+      );
+
+    // Update nodes
+    const nodeSel = g
+      .select('.nodes')
+      .selectAll('.node')
+      .data(visibleNodes, (d) => d.id);
+
+    nodeSel
+      .join(
+        (enter) => {
+          const groups = enter
+            .append('g')
+            .attr('class', 'node')
+            .attr('data-id', (d) => d.id)
+            .attr('transform', (d) => `translate(${d.x},${d.y})`)
+            .style('cursor', 'pointer')
+            .on('click', (_event, d) => handleNodeClick(d))
+            .on('mouseenter', (event, d) => {
+              handleNodeHover(event, d);
+              const content = TooltipBuilder.buildNodeTooltip(d);
+              setTooltip({ visible: true, content, position: { x: event.pageX, y: event.pageY } });
+            })
+            .on('mousemove', (event) => {
+              if (tooltip.visible) {
+                setTooltip((prev) => ({ ...prev, position: { x: event.pageX, y: event.pageY } }));
+              }
+            })
+            .on('mouseleave', (event) => {
+              handleNodeHoverEnd(event);
+              setTooltip({ visible: false, content: null, position: null });
+            });
+
+          groups.each(function (d) {
+            const group = d3.select(this);
+            JerseyRenderer.renderNode(group, d, d3.select(svgRef.current));
+            JerseyRenderer.addNodeLabel(group, d);
+          });
+
+          return groups;
+        },
+        (update) => update.attr('transform', (d) => `translate(${d.x},${d.y})`),
+        (exit) => exit.remove()
+      );
   };
   
   const renderLinks = (g, links) => {

@@ -246,9 +246,11 @@
 ✅ **Status**: Implemented on branch `feature/prompt-19`. SearchBar component with fuzzy search across all eras and UCI codes; GraphNavigation utility with focusOnNode (animated zoom/pan to center node with highlight pulse) and highlightPath (BFS pathfinding with sequential link highlighting); integrated into TimelineGraph with data-id attributes on nodes/links; tests cover search ranking, era matching, result selection, and navigation methods. All tests passing (70 frontend, 138 backend). PR merged via squash.
 
 ### Prompt 20: Performance
-- [ ] **Virtualization**: Implement `ViewportManager` to cull off-screen nodes.
-- [ ] **Monitoring**: Add `PerformanceMonitor` for dev mode.
-- [ ] **Optimization**: Implement LOD (Level of Detail) rendering strategy.
+- [x] **Virtualization**: Implement `ViewportManager` to cull off-screen nodes.
+- [x] **Monitoring**: Add `PerformanceMonitor` for dev mode.
+- [x] **Optimization**: Implement LOD (Level of Detail) rendering strategy.
+
+✅ Status: Implemented on branch `feature/prompt-20`. Added `ViewportManager` (viewport culling), `PerformanceMonitor` (timing and metrics logging), `OptimizedRenderer` (queue + LOD + optional canvas). Integrated into `TimelineGraph` with debounced virtualization updates during zoom/pan, and dev-mode metrics logging. Added tests for utilities and LOD behavior. All tests passing (76 frontend, 138 backend, 1 skipped).
 
 ---
 
