@@ -31,6 +31,23 @@ class Settings(BaseSettings):
     SCRAPER_USER_AGENT: str = "CyclingLineageBot/1.0"
     SCRAPER_INTERVAL: int = 300  # seconds between full cycles
     
+    # Auth settings
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_REDIRECT_URI: str = "http://localhost:5173/auth/callback"
+    
+    JWT_SECRET_KEY: str = "dev-secret-key-change-in-production"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    
+    # OAuth scopes
+    GOOGLE_SCOPES: List[str] = [
+        "openid",
+        "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/userinfo.profile"
+    ]
+    
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True

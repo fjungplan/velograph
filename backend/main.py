@@ -8,6 +8,7 @@ from app.api.health import router as health_router
 from app.api.v1.teams import router as teams_router
 from app.api.v1.timeline import router as timeline_router
 from app.api.v1.admin import router as admin_router
+from app.api.v1.auth import router as auth_router
 from app.core.exceptions import (
     NodeNotFoundException,
     DuplicateEraException,
@@ -102,6 +103,7 @@ async def domain_validation_handler(request: Request, exc: DomainValidationExcep
 
 # Include routers
 app.include_router(health_router, tags=["health"])
+app.include_router(auth_router)
 app.include_router(teams_router)
 app.include_router(timeline_router)
 app.include_router(admin_router)
