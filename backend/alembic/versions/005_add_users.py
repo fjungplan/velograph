@@ -7,7 +7,7 @@ Create Date: 2025-12-01 00:00:00.000000
 """
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ENUM
 
 # revision identifiers, used by Alembic.
 revision = '005_add_users'
@@ -34,7 +34,7 @@ def upgrade():
         sa.Column('email', sa.String(255), unique=True, nullable=False),
         sa.Column('display_name', sa.String(255)),
         sa.Column('avatar_url', sa.String(500)),
-        sa.Column('role', sa.Enum('GUEST', 'NEW_USER', 'TRUSTED_USER', 'ADMIN', name='user_role_enum', create_type=False), server_default='NEW_USER'),
+        sa.Column('role', ENUM('GUEST', 'NEW_USER', 'TRUSTED_USER', 'ADMIN', name='user_role_enum', create_type=False), server_default='NEW_USER'),
         sa.Column('approved_edits_count', sa.Integer, default=0),
         sa.Column('is_banned', sa.Boolean, default=False),
         sa.Column('banned_reason', sa.Text, nullable=True),
