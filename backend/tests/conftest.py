@@ -111,11 +111,15 @@ async def db_session(isolated_session) -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest_asyncio.fixture
-async def test_client(isolated_session) -> AsyncGenerator[AsyncClient, None]:
-    """Async test client with DB dependency overridden to use isolated_session."""
+async def test_client(isolated_engine) -> AsyncGenerator[AsyncClient, None]:
+    """Async test client with DB dependency overridden to create fresh sessions per request."""
+    # Create a session maker bound to the isolated engine
+    maker = async_sessionmaker(isolated_engine, class_=AsyncSession, expire_on_commit=False)
 
     async def _override_get_db():
-        yield isolated_session
+        # Yield a fresh session for each request to avoid connection reuse issues
+        async with maker() as session:
+            yield session
 
     # Override DB session and health checker to avoid external DB access
     app.dependency_overrides[get_db] = _override_get_db
