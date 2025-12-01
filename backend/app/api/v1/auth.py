@@ -18,24 +18,25 @@ async def google_auth(
     session: AsyncSession = Depends(get_db)
 ):
     """Authenticate with Google ID token"""
-    # Use a single transactional context to avoid nested transactions
-    async with session.begin():
-        # Verify Google token
-        google_user_info = await AuthService.verify_google_token(request.id_token)
-        
-        if not google_user_info:
-            raise HTTPException(status_code=401, detail="Invalid Google token")
-        
-        # Get or create user
-        user = await AuthService.get_or_create_user(session, google_user_info)
-        
-        if user.is_banned:
-            raise HTTPException(status_code=403, detail=f"Account banned: {user.banned_reason}")
-        
-        # Create tokens
-        tokens = await AuthService.create_tokens(session, user)
-        
-        return tokens
+    # Verify Google token
+    google_user_info = await AuthService.verify_google_token(request.id_token)
+    
+    if not google_user_info:
+        raise HTTPException(status_code=401, detail="Invalid Google token")
+    
+    # Get or create user
+    user = await AuthService.get_or_create_user(session, google_user_info)
+    
+    if user.is_banned:
+        raise HTTPException(status_code=403, detail=f"Account banned: {user.banned_reason}")
+    
+    # Create tokens
+    tokens = await AuthService.create_tokens(session, user)
+    
+    # Commit once at the end to persist changes
+    await session.commit()
+    
+    return tokens
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -44,30 +45,31 @@ async def refresh_token(
     session: AsyncSession = Depends(get_db)
 ):
     """Refresh access token using refresh token"""
-    # Use a single transactional context to avoid nested transactions
-    async with session.begin():
-        # Verify refresh token
-        payload = verify_token(request.refresh_token)
-        
-        if not payload or payload.get("type") != "refresh":
-            raise HTTPException(status_code=401, detail="Invalid refresh token")
-        
-        user_id = payload.get("sub")
-        # Get user
-        stmt = select(User).where(User.user_id == user_id)
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
-        
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        if user.is_banned:
-            raise HTTPException(status_code=403, detail=f"Account banned: {user.banned_reason}")
-        
-        # Create tokens with new refresh token
-        tokens = await AuthService.create_tokens(session, user)
-        
-        return tokens
+    # Verify refresh token
+    payload = verify_token(request.refresh_token)
+    
+    if not payload or payload.get("type") != "refresh":
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+    
+    user_id = payload.get("sub")
+    # Get user
+    stmt = select(User).where(User.user_id == user_id)
+    result = await session.execute(stmt)
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if user.is_banned:
+        raise HTTPException(status_code=403, detail=f"Account banned: {user.banned_reason}")
+    
+    # Create tokens with new refresh token
+    tokens = await AuthService.create_tokens(session, user)
+    
+    # Commit once at the end to persist changes
+    await session.commit()
+    
+    return tokens
 
 
 @router.get("/me", response_model=UserResponse)
