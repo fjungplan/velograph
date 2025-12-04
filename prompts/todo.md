@@ -257,11 +257,18 @@
 ## Phase 6: Authentication
 
 ### Prompt 21: Backend Auth (Google + JWT)
-- [ ] **Config**: Add Google Client ID/Secret settings.
-- [ ] **Migration**: Add `users` and `refresh_tokens` tables.
-- [ ] **Security**: Implement JWT creation/verification utils.
-- [ ] **Service**: Implement `AuthService` (verify Google token, create user).
-- [ ] **Endpoints**: `POST /auth/google`, `POST /auth/refresh`, `GET /me`.
+- [x] **Config**: Add Google Client ID/Secret settings.
+- [x] **Migration**: Add `users` and `refresh_tokens` tables.
+- [x] **Security**: Implement JWT creation/verification utils.
+- [x] **Service**: Implement `AuthService` (verify Google token, create user).
+- [x] **Endpoints**: `POST /auth/google`, `POST /auth/refresh`, `GET /me`.
+- [x] **Dependencies**: Add auth packages to requirements.txt.
+- [x] **Schemas**: Create auth request/response schemas.
+- [x] **Dependencies**: Implement auth dependencies (get_current_user, require_admin, etc.).
+- [x] **Tests**: Comprehensive service and API tests.
+- [x] **Documentation**: Google Cloud setup guide and implementation summary.
+
+✅ **Status**: Implemented on branch `feature/prompt-21-google-oauth-v2`. Complete Google OAuth backend with JWT token management. Added all auth dependencies, configured settings, created auth schemas, implemented auth endpoints and dependencies. Comprehensive test coverage for both service layer and API layer. Detailed Google Cloud setup documentation provided. All files compile successfully, app loads with 3 auth routes registered. Ready for Prompt 22 (Frontend Auth Integration).
 
 ### Prompt 22: Frontend Auth
 - [ ] **Dependencies**: Install `@react-oauth/google`.
