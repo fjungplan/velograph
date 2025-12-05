@@ -8,6 +8,8 @@ class EditMetadataRequest(BaseModel):
     registered_name: Optional[str] = None
     uci_code: Optional[str] = None
     tier_level: Optional[int] = None
+    founding_year: Optional[int] = None
+    dissolution_year: Optional[int] = None
     reason: str  # Why this edit is being made
     
     @field_validator('uci_code')
@@ -22,6 +24,20 @@ class EditMetadataRequest(BaseModel):
     def validate_tier(cls, v):
         if v and v not in [1, 2, 3]:
             raise ValueError('Tier must be 1, 2, or 3')
+        return v
+    
+    @field_validator('founding_year')
+    @classmethod
+    def validate_founding_year(cls, v):
+        if v and (v < 1900 or v > 2100):
+            raise ValueError('Founding year must be between 1900 and 2100')
+        return v
+    
+    @field_validator('dissolution_year')
+    @classmethod
+    def validate_dissolution_year(cls, v):
+        if v and (v < 1900 or v > 2100):
+            raise ValueError('Dissolution year must be between 1900 and 2100')
         return v
     
     @field_validator('reason')

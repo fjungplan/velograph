@@ -19,6 +19,7 @@ import EditMetadataWizard from './EditMetadataWizard';
 import MergeWizard from './MergeWizard';
 import SplitWizard from './SplitWizard';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function TimelineGraph({ 
   data, 
@@ -47,7 +48,8 @@ export default function TimelineGraph({
   const [showSplitWizard, setShowSplitWizard] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
   
-  const { user, isAuthenticated } = useAuth();
+  const { user, canEdit } = useAuth();
+  const navigate = useNavigate();
   
   useEffect(() => {
     // Initialize zoom manager
@@ -382,18 +384,14 @@ export default function TimelineGraph({
   const handleNodeClick = (node) => {
     console.log('Clicked node:', node);
     
-    // Only allow edits if user is authenticated and has editor role or higher
-    if (isAuthenticated && (user?.role === 'EDITOR' || user?.role === 'TRUSTED_USER' || user?.role === 'ADMIN')) {
+    // Only allow edits if user can edit (authenticated with proper role)
+    if (canEdit()) {
       setSelectedNode(node);
       setShowEditWizard(true);
     } else {
-      // TODO: Navigate to team detail page when that's implemented
-      console.log('View team detail for:', node.id);
+      // Navigate to team detail page for non-editors
+      navigate(`/team/${node.id}`);
     }
-  };
-  
-  const canUseWizards = () => {
-    return isAuthenticated && (user?.role === 'EDITOR' || user?.role === 'TRUSTED_USER' || user?.role === 'ADMIN');
   };
   
   const handleWizardSuccess = (result) => {
@@ -463,6 +461,7 @@ export default function TimelineGraph({
       {/* Wizard Modals */}
       {showEditWizard && selectedNode && selectedNode.eras && selectedNode.eras.length > 0 && (
         <EditMetadataWizard
+          node={selectedNode}
           era={selectedNode.eras[selectedNode.eras.length - 1]}
           onClose={() => {
             setShowEditWizard(false);
@@ -494,9 +493,16 @@ export default function TimelineGraph({
         />
       )}
       
-      {/* Action buttons for merge/split - only show if user can edit */}
-      {canUseWizards() && (
+      {/* Action buttons for merge/split/create - only show if user can edit */}
+      {canEdit() && (
         <div className="wizard-actions">
+          <button 
+            className="wizard-action-btn wizard-create"
+            onClick={() => {/* TODO: Open create team wizard */}}
+            title="Create a new team from scratch"
+          >
+            + Create Team
+          </button>
           <button 
             className="wizard-action-btn"
             onClick={() => setShowMergeWizard(true)}

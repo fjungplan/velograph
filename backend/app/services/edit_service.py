@@ -31,6 +31,11 @@ class EditService:
         if not era:
             raise ValueError("Era not found")
         
+        # Get the team node (needed for node-level changes)
+        node = await session.get(TeamNode, era.node_id, options=[selectinload(TeamNode.eras)])
+        if not node:
+            raise ValueError("Team node not found")
+        
         # Build changes dict (only include fields that are being changed)
         changes = {}
         if request.registered_name:
@@ -39,15 +44,20 @@ class EditService:
             changes['uci_code'] = request.uci_code
         if request.tier_level:
             changes['tier_level'] = request.tier_level
+        if request.founding_year is not None:
+            changes['founding_year'] = request.founding_year
+        if request.dissolution_year is not None:
+            changes['dissolution_year'] = request.dissolution_year
         
         if not changes:
             raise ValueError("No changes specified")
         
-        # Create edit record
+        # Create edit record (target both era and node)
         edit = Edit(
             user_id=user.user_id,
             edit_type=EditType.METADATA,
             target_era_id=era_id,
+            target_node_id=node.node_id,
             changes=changes,
             reason=request.reason
         )
@@ -59,7 +69,7 @@ class EditService:
             edit.reviewed_at = datetime.utcnow()
             
             # Apply changes immediately
-            await EditService._apply_metadata_changes(session, era, changes, user)
+            await EditService._apply_metadata_changes(session, era, node, changes, user)
             
             # Increment approved edits count
             user.approved_edits_count += 1
@@ -83,10 +93,12 @@ class EditService:
     async def _apply_metadata_changes(
         session: AsyncSession,
         era: TeamEra,
+        node: TeamNode,
         changes: Dict,
         user: User
     ):
-        """Apply metadata changes to an era"""
+        """Apply metadata changes to an era and/or node"""
+        # Apply era-level changes
         if 'registered_name' in changes:
             era.registered_name = changes['registered_name']
         if 'uci_code' in changes:
@@ -94,10 +106,18 @@ class EditService:
         if 'tier_level' in changes:
             era.tier_level = changes['tier_level']
         
+        # Apply node-level changes
+        if 'founding_year' in changes:
+            node.founding_year = changes['founding_year']
+        if 'dissolution_year' in changes:
+            # Allow setting to None if explicitly passed as None
+            node.dissolution_year = changes['dissolution_year']
+        
         # Mark as manual override to prevent scraper from overwriting
         era.is_manual_override = True
         era.source_origin = f"user_{user.user_id}"
         era.updated_at = datetime.utcnow()
+        node.updated_at = datetime.utcnow()
         
         await session.commit()
     

@@ -66,11 +66,23 @@
   margin-bottom: 1.5rem;
 }
 
+.form-section h3 {
+  font-size: 1.1rem;
+  margin: 0 0 1rem 0;
+  color: #555;
+}
+
 .form-section label {
   display: block;
   margin-bottom: 1rem;
   font-weight: 500;
   color: #333;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
 }
 
 .form-section input,

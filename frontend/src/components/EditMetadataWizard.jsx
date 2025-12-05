@@ -3,12 +3,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { editsApi } from '../api/edits';
 import './EditMetadataWizard.css';
 
-export default function EditMetadataWizard({ era, onClose, onSuccess }) {
+export default function EditMetadataWizard({ node, era, onClose, onSuccess }) {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
     registered_name: era.name || '',
     uci_code: era.uci_code || '',
     tier_level: era.tier || '',
+    founding_year: node?.founding_year || '',
+    dissolution_year: node?.dissolution_year || '',
     reason: ''
   });
   const [submitting, setSubmitting] = useState(false);
@@ -36,6 +38,12 @@ export default function EditMetadataWizard({ era, onClose, onSuccess }) {
       if (formData.tier_level && parseInt(formData.tier_level) !== era.tier) {
         changes.tier_level = parseInt(formData.tier_level);
       }
+      if (formData.founding_year && parseInt(formData.founding_year) !== node?.founding_year) {
+        changes.founding_year = parseInt(formData.founding_year);
+      }
+      if (formData.dissolution_year !== (node?.dissolution_year || '')) {
+        changes.dissolution_year = formData.dissolution_year ? parseInt(formData.dissolution_year) : null;
+      }
       
       if (Object.keys(changes).length === 0) {
         setError('No changes detected');
@@ -60,7 +68,9 @@ export default function EditMetadataWizard({ era, onClose, onSuccess }) {
   const isChanged = () => {
     return formData.registered_name !== era.name ||
            formData.uci_code !== era.uci_code ||
-           (formData.tier_level && parseInt(formData.tier_level) !== era.tier);
+           (formData.tier_level && parseInt(formData.tier_level) !== era.tier) ||
+           (formData.founding_year && parseInt(formData.founding_year) !== node?.founding_year) ||
+           formData.dissolution_year !== (node?.dissolution_year || '');
   };
   
   return (
@@ -106,6 +116,38 @@ export default function EditMetadataWizard({ era, onClose, onSuccess }) {
                 <option value="3">UCI Continental</option>
               </select>
             </label>
+          </div>
+
+          <div className="form-section">
+            <h3>Team Duration</h3>
+            <div className="form-row">
+              <label>
+                Founding Year
+                <input
+                  type="number"
+                  value={formData.founding_year}
+                  onChange={(e) => handleChange('founding_year', e.target.value)}
+                  min="1900"
+                  max="2100"
+                  required
+                />
+              </label>
+              
+              <label>
+                Dissolution Year (optional)
+                <input
+                  type="number"
+                  value={formData.dissolution_year}
+                  onChange={(e) => handleChange('dissolution_year', e.target.value)}
+                  min={formData.founding_year || "1900"}
+                  max="2100"
+                  placeholder="Leave empty if still active"
+                />
+              </label>
+            </div>
+            <div className="help-text">
+              Changing these years affects the team's timeline visualization
+            </div>
           </div>
           
           <div className="form-section">
