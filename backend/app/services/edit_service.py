@@ -1,13 +1,16 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from datetime import datetime
 from typing import Dict
 from uuid import UUID
 
 from app.models.edit import Edit, EditType, EditStatus
-from app.models.team import TeamEra
+from app.models.team import TeamEra, TeamNode
+from app.models.lineage import LineageEvent
+from app.models.enums import EventType
 from app.models.user import User, UserRole
-from app.schemas.edits import EditMetadataRequest, EditMetadataResponse
+from app.schemas.edits import EditMetadataRequest, EditMetadataResponse, MergeEventRequest
 
 
 class EditService:
@@ -95,5 +98,130 @@ class EditService:
         era.is_manual_override = True
         era.source_origin = f"user_{user.user_id}"
         era.updated_at = datetime.utcnow()
+        
+        await session.commit()
+    
+    @staticmethod
+    async def create_merge_edit(
+        session: AsyncSession,
+        user: User,
+        request: MergeEventRequest
+    ) -> EditMetadataResponse:
+        """
+        Create a merge event edit.
+        
+        Args:
+            session: Database session
+            user: User creating the merge
+            request: Merge request with source nodes and new team details
+            
+        Returns:
+            EditMetadataResponse with edit_id, status, and message
+            
+        Raises:
+            ValueError: If validation fails (invalid UUIDs, missing teams, inactive teams)
+        """
+        # Validate source nodes exist
+        source_nodes = []
+        for node_id_str in request.source_node_ids:
+            try:
+                node_id = UUID(node_id_str)
+            except (ValueError, AttributeError):
+                raise ValueError(f"Invalid node_id format: {node_id_str}")
+            
+            # Eager-load eras relationship to avoid lazy loading in async context
+            stmt = select(TeamNode).where(TeamNode.node_id == node_id).options(selectinload(TeamNode.eras))
+            result = await session.execute(stmt)
+            node = result.scalar_one_or_none()
+            
+            if not node:
+                raise ValueError(f"Team node {node_id_str} not found")
+            
+            # Check node is active in merge year
+            has_era = any(era.season_year == request.merge_year for era in node.eras)
+            if not has_era:
+                raise ValueError(f"Team {node_id_str} was not active in {request.merge_year}")
+            
+            source_nodes.append(node)
+        
+        # Create edit record
+        edit = Edit(
+            user_id=user.user_id,
+            edit_type=EditType.MERGE,
+            changes={
+                'source_node_ids': request.source_node_ids,
+                'merge_year': request.merge_year,
+                'new_team_name': request.new_team_name,
+                'new_team_tier': request.new_team_tier
+            },
+            reason=request.reason
+        )
+        
+        # Auto-approve for trusted users and admins
+        if user.role in [UserRole.TRUSTED_USER, UserRole.ADMIN]:
+            edit.status = EditStatus.APPROVED
+            edit.reviewed_by = user.user_id
+            edit.reviewed_at = datetime.utcnow()
+            
+            # Apply merge immediately with validated nodes
+            await EditService._apply_merge(session, request, user, source_nodes)
+            
+            user.approved_edits_count += 1
+            message = "Merge created successfully"
+        else:
+            edit.status = EditStatus.PENDING
+            message = "Merge submitted for moderation"
+        
+        session.add(edit)
+        await session.commit()
+        await session.refresh(edit)
+        
+        return EditMetadataResponse(
+            edit_id=str(edit.edit_id),
+            status=edit.status.value,
+            message=message
+        )
+    
+    @staticmethod
+    async def _apply_merge(
+        session: AsyncSession,
+        request: MergeEventRequest,
+        user: User,
+        validated_source_nodes: list[TeamNode]
+    ):
+        """Apply a merge: close old nodes, create new node with links"""
+        # Create new team node
+        new_node = TeamNode(
+            founding_year=request.merge_year
+        )
+        session.add(new_node)
+        await session.flush()  # Get node_id
+        
+        # Create first era for new team
+        new_era = TeamEra(
+            node_id=new_node.node_id,
+            season_year=request.merge_year,
+            registered_name=request.new_team_name,
+            tier_level=request.new_team_tier,
+            source_origin=f"user_{user.user_id}",
+            is_manual_override=True
+        )
+        session.add(new_era)
+        
+        # Close source nodes and create lineage links using validated nodes
+        for source_node in validated_source_nodes:
+            # Set dissolution year
+            source_node.dissolution_year = request.merge_year
+            source_node.updated_at = datetime.utcnow()
+            
+            # Create MERGE lineage event
+            lineage_event = LineageEvent(
+                previous_node_id=source_node.node_id,
+                next_node_id=new_node.node_id,
+                event_year=request.merge_year,
+                event_type=EventType.MERGE,
+                notes=f"Merged into {request.new_team_name}"
+            )
+            session.add(lineage_event)
         
         await session.commit()

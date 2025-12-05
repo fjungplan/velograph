@@ -282,7 +282,7 @@
 
 ## Phase 7: The Wizard Editor
 
-### Prompt 23: Metadata Wizard
+### Prompt 23: Edit Metadata Wizard
 - [x] **Backend**:
     - [x] Create `edits` table migration.
     - [x] Implement `EditService.create_metadata_edit`.
@@ -291,12 +291,12 @@
     - [x] Implement form validation.
 
 ### Prompt 24: Merge Wizard
-- [ ] **Backend**:
-    - [ ] Implement `create_merge_edit`.
-    - [ ] Logic: Close source nodes, create new node, create lineage events.
-- [ ] **Frontend**:
-    - [ ] Create multi-step `MergeWizard`.
-    - [ ] Integrate team search for selecting source nodes.
+- [x] **Backend**:
+    - [x] Implement `create_merge_edit`.
+    - [x] Logic: Close source nodes, create new node, create lineage events.
+- [x] **Frontend**:
+    - [x] Create multi-step `MergeWizard`.
+    - [x] Integrate team search for selecting source nodes.
 
 ### Prompt 25: Split Wizard
 - [ ] **Backend**:

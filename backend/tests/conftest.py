@@ -254,3 +254,53 @@ def admin_user_token(admin_user: User) -> str:
 def banned_user_token(banned_user: User) -> str:
     """Generate JWT token for banned user."""
     return create_access_token({"sub": str(banned_user.user_id)})
+
+
+# Aliases for consistency with test files
+@pytest_asyncio.fixture
+async def async_session(isolated_session) -> AsyncSession:
+    """Alias for isolated_session."""
+    return isolated_session
+
+
+@pytest_asyncio.fixture
+async def test_user_new(new_user) -> User:
+    """Alias for new_user."""
+    return new_user
+
+
+@pytest_asyncio.fixture
+async def test_user_trusted(trusted_user) -> User:
+    """Alias for trusted_user."""
+    return trusted_user
+
+
+@pytest_asyncio.fixture
+async def test_user_admin(admin_user) -> User:
+    """Alias for admin_user."""
+    return admin_user
+
+
+@pytest_asyncio.fixture
+async def sample_teams(isolated_session):
+    """Create sample teams with eras for testing merges."""
+    nodes = []
+    for i in range(3):
+        node = TeamNode(founding_year=2000 + i * 5)
+        isolated_session.add(node)
+        await isolated_session.flush()
+        
+        # Add era for 2020
+        era = TeamEra(
+            node_id=node.node_id,
+            season_year=2020,
+            registered_name=f"Sample Team {i+1}",
+            tier_level=(i % 3) + 1
+        )
+        isolated_session.add(era)
+        nodes.append(node)
+    
+    await isolated_session.commit()
+    for node in nodes:
+        await isolated_session.refresh(node)
+    return nodes
