@@ -7,6 +7,9 @@ export const editsApi = {
   createMerge: (data) =>
     apiClient.post('/api/v1/edits/merge', data),
   
+  createSplit: (data) =>
+    apiClient.post('/api/v1/edits/split', data),
+  
   getMyEdits: () =>
     apiClient.get('/api/v1/edits/my-edits'),
   

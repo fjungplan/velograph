@@ -299,11 +299,11 @@
     - [x] Integrate team search for selecting source nodes.
 
 ### Prompt 25: Split Wizard
-- [ ] **Backend**:
-    - [ ] Implement `create_split_edit`.
-    - [ ] Logic: Create multiple new nodes from one source.
-- [ ] **Frontend**:
-    - [ ] Create `SplitWizard` with dynamic form fields (add/remove teams).
+- [x] **Backend**:
+    - [x] Implement `create_split_edit`.
+    - [x] Logic: Create multiple new nodes from one source.
+- [x] **Frontend**:
+    - [x] Create `SplitWizard` with dynamic form fields (add/remove teams).
 
 ---
 

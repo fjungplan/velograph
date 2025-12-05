@@ -10,7 +10,7 @@ from app.models.team import TeamEra, TeamNode
 from app.models.lineage import LineageEvent
 from app.models.enums import EventType
 from app.models.user import User, UserRole
-from app.schemas.edits import EditMetadataRequest, EditMetadataResponse, MergeEventRequest
+from app.schemas.edits import EditMetadataRequest, EditMetadataResponse, MergeEventRequest, SplitEventRequest
 
 
 class EditService:
@@ -224,4 +224,136 @@ class EditService:
             )
             session.add(lineage_event)
         
+        await session.commit()
+    
+    @staticmethod
+    async def create_split_edit(
+        session: AsyncSession,
+        user: User,
+        request: SplitEventRequest
+    ) -> EditMetadataResponse:
+        """
+        Create a split event edit.
+
+        Args:
+            session: Database session
+            user: User creating the split
+            request: Split request with source node and new team details
+
+        Returns:
+            EditMetadataResponse with edit_id, status, and message
+
+        Raises:
+            ValueError: If validation fails (invalid UUIDs, missing team, inactive team)
+        """
+        # Validate source node exists
+        try:
+            node_id = UUID(request.source_node_id)
+        except (ValueError, AttributeError):
+            raise ValueError(f"Invalid node_id format: {request.source_node_id}")
+
+        # Eager-load eras relationship to avoid lazy loading in async context
+        stmt = select(TeamNode).where(TeamNode.node_id == node_id).options(selectinload(TeamNode.eras))
+        result = await session.execute(stmt)
+        source_node = result.scalar_one_or_none()
+
+        if not source_node:
+            raise ValueError("Source team not found")
+
+        # Check node is active in split year
+        has_era = any(era.season_year == request.split_year for era in source_node.eras)
+        if not has_era:
+            raise ValueError(f"Team was not active in {request.split_year}")
+
+        # Create edit record
+        edit = Edit(
+            user_id=user.user_id,
+            edit_type=EditType.SPLIT,
+            target_node_id=node_id,
+            changes={
+                'split_year': request.split_year,
+                'new_teams': [
+                    {'name': team.name, 'tier': team.tier}
+                    for team in request.new_teams
+                ]
+            },
+            reason=request.reason
+        )
+
+        # Auto-approve for trusted users and admins
+        if user.role in [UserRole.TRUSTED_USER, UserRole.ADMIN]:
+            edit.status = EditStatus.APPROVED
+            edit.reviewed_by = user.user_id
+            edit.reviewed_at = datetime.utcnow()
+
+            # Apply split immediately
+            await EditService._apply_split(session, request, user)
+
+            user.approved_edits_count += 1
+            message = "Split created successfully"
+        else:
+            edit.status = EditStatus.PENDING
+            message = "Split submitted for moderation"
+
+        session.add(edit)
+        await session.commit()
+        await session.refresh(edit)
+
+        return EditMetadataResponse(
+            edit_id=str(edit.edit_id),
+            status=edit.status.value,
+            message=message
+        )
+
+    @staticmethod
+    async def _apply_split(
+        session: AsyncSession,
+        request: SplitEventRequest,
+        user: User
+    ):
+        """Apply a split: close old node, create new nodes with links"""
+        # Get source node
+        try:
+            node_id = UUID(request.source_node_id)
+        except (ValueError, AttributeError):
+            raise ValueError(f"Invalid node_id format: {request.source_node_id}")
+
+        source_node = await session.get(TeamNode, node_id)
+        if not source_node:
+            raise ValueError("Source team not found")
+
+        # Close source node
+        source_node.dissolution_year = request.split_year
+        source_node.updated_at = datetime.utcnow()
+
+        # Create new team nodes
+        for new_team_info in request.new_teams:
+            # Create new node
+            new_node = TeamNode(
+                founding_year=request.split_year
+            )
+            session.add(new_node)
+            await session.flush()  # Get node_id
+
+            # Create first era
+            new_era = TeamEra(
+                node_id=new_node.node_id,
+                season_year=request.split_year,
+                registered_name=new_team_info.name,
+                tier_level=new_team_info.tier,
+                source_origin=f"user_{user.user_id}",
+                is_manual_override=True
+            )
+            session.add(new_era)
+
+            # Create SPLIT lineage event
+            lineage_event = LineageEvent(
+                previous_node_id=node_id,
+                next_node_id=new_node.node_id,
+                event_year=request.split_year,
+                event_type=EventType.SPLIT,
+                notes=f"Split from source team into {new_team_info.name}"
+            )
+            session.add(lineage_event)
+
         await session.commit()

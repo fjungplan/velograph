@@ -1,0 +1,213 @@
+/* Reuse common wizard styles from MergeWizard */
+.wizard-modal.large {
+  width: 90%;
+  max-width: 700px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.wizard-progress {
+  display: flex;
+  justify-content: space-between;
+  margin: 20px 0;
+  padding: 0 20px;
+}
+
+.wizard-progress .step {
+  flex: 1;
+  text-align: center;
+  padding: 10px;
+  background: #f5f5f5;
+  margin: 0 5px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #666;
+}
+
+.wizard-progress .step.active {
+  background: #4A90E2;
+  color: white;
+  font-weight: bold;
+}
+
+.wizard-content {
+  padding: 20px;
+  min-height: 300px;
+}
+
+.step-content h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.step-content > p {
+  margin: 0 0 20px 0;
+  color: #666;
+  font-size: 15px;
+}
+
+.new-teams-list {
+  margin-bottom: 20px;
+}
+
+.new-team-form {
+  padding: 15px;
+  margin-bottom: 15px;
+  background: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.new-team-form h4 {
+  margin: 0 0 12px 0;
+  color: #333;
+  font-size: 15px;
+}
+
+.new-team-form label {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.new-team-form label input,
+.new-team-form label select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  margin-top: 5px;
+  box-sizing: border-box;
+}
+
+.new-team-form label input:focus,
+.new-team-form label select:focus {
+  outline: none;
+  border-color: #4A90E2;
+  box-shadow: 0 0 4px rgba(74, 144, 226, 0.3);
+}
+
+.remove-button {
+  width: 100%;
+  padding: 8px 12px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-top: 8px;
+  transition: background 0.2s;
+}
+
+.remove-button:hover {
+  background: #c82333;
+}
+
+.add-team-button {
+  width: 100%;
+  padding: 12px;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.add-team-button:hover {
+  background: #218838;
+}
+
+.add-team-button:active {
+  transform: scale(0.98);
+}
+
+.step-content label {
+  display: block;
+  margin-bottom: 15px;
+}
+
+.step-content label input,
+.step-content label select,
+.step-content label textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  margin-top: 5px;
+  box-sizing: border-box;
+}
+
+.step-content label textarea {
+  resize: vertical;
+  font-family: inherit;
+  min-height: 120px;
+}
+
+.step-content label input:focus,
+.step-content label select:focus,
+.step-content label textarea:focus {
+  outline: none;
+  border-color: #4A90E2;
+  box-shadow: 0 0 4px rgba(74, 144, 226, 0.3);
+}
+
+.review-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  border-left: 4px solid #4A90E2;
+}
+
+.review-section h4 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 16px;
+}
+
+.review-section ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.review-section li {
+  margin: 8px 0;
+  color: #555;
+}
+
+.review-section p {
+  margin: 5px 0;
+  color: #666;
+  line-height: 1.5;
+}
+
+.review-section strong {
+  color: #333;
+  font-size: 15px;
+}
+
+@media (max-width: 768px) {
+  .wizard-modal.large {
+    width: 95%;
+    max-height: 95vh;
+  }
+
+  .wizard-progress {
+    flex-direction: column;
+  }
+
+  .wizard-progress .step {
+    margin: 5px 0;
+    font-size: 12px;
+  }
+
+  .new-team-form {
+    padding: 12px;
+  }
+}

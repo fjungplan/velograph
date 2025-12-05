@@ -83,5 +83,32 @@ async def test_relationship_traversal(async_session: AsyncSession, sample_team_n
         event_type=EventType.LEGAL_TRANSFER,
         notes="Test traversal"
     )
-    assert next_node.get_predecessors() == [sample_team_node]
-    assert sample_team_node.get_successors() == [next_node]
+
+    # Reload with eager relationships to avoid async lazy-load during assertions
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    stmt = (
+        select(TeamNode)
+        .where(TeamNode.node_id == next_node.node_id)
+        .options(
+            selectinload(TeamNode.incoming_events).selectinload(LineageEvent.previous_node),
+            selectinload(TeamNode.outgoing_events).selectinload(LineageEvent.next_node),
+        )
+    )
+    result = await async_session.execute(stmt)
+    reloaded = result.scalar_one()
+
+    pred_stmt = (
+        select(TeamNode)
+        .where(TeamNode.node_id == sample_team_node.node_id)
+        .options(
+            selectinload(TeamNode.outgoing_events).selectinload(LineageEvent.next_node),
+            selectinload(TeamNode.incoming_events).selectinload(LineageEvent.previous_node),
+        )
+    )
+    pred_result = await async_session.execute(pred_stmt)
+    reloaded_predecessor = pred_result.scalar_one()
+
+    assert [node.node_id for node in reloaded.get_predecessors()] == [sample_team_node.node_id]
+    assert [node.node_id for node in reloaded_predecessor.get_successors()] == [reloaded.node_id]

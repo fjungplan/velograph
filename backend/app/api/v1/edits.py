@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.api.dependencies import get_current_user, require_editor
 from app.models.user import User
-from app.schemas.edits import EditMetadataRequest, EditMetadataResponse, MergeEventRequest
+from app.schemas.edits import EditMetadataRequest, EditMetadataResponse, MergeEventRequest, SplitEventRequest
 from app.services.edit_service import EditService
 
 router = APIRouter(prefix="/api/v1/edits", tags=["edits"])
@@ -49,6 +49,30 @@ async def create_merge(
     """
     try:
         result = await EditService.create_merge_edit(
+            session,
+            current_user,
+            request
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/split", response_model=EditMetadataResponse)
+async def create_split(
+    request: SplitEventRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_editor)
+):
+    """
+    Create a team split event.
+    
+    This endpoint allows authenticated users to split a team into multiple teams.
+    - NEW_USER: Split goes to moderation queue (PENDING status)
+    - TRUSTED_USER/ADMIN: Split is auto-approved and applied immediately
+    """
+    try:
+        result = await EditService.create_split_edit(
             session,
             current_user,
             request
