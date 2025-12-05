@@ -12,6 +12,8 @@ from app.api.health import get_checker
 from app.models.team import TeamNode, TeamEra
 from app.models.lineage import LineageEvent
 from app.models.enums import EventType
+from app.models.user import User, UserRole
+from app.core.security import create_access_token
 import uuid
 
 @pytest_asyncio.fixture
@@ -164,3 +166,91 @@ async def sample_teams_in_db(isolated_session):
         isolated_session.add_all([e1, e2])
     await isolated_session.commit()
     return nodes
+
+
+# Auth fixtures
+@pytest_asyncio.fixture
+async def new_user(isolated_session) -> User:
+    """Create a new user with NEW_USER role."""
+    user = User(
+        google_id="test_new_user_123",
+        email="newuser@test.com",
+        display_name="New User",
+        role=UserRole.NEW_USER
+    )
+    isolated_session.add(user)
+    await isolated_session.commit()
+    await isolated_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
+async def trusted_user(isolated_session) -> User:
+    """Create a trusted user with TRUSTED_USER role."""
+    user = User(
+        google_id="test_trusted_user_123",
+        email="trusteduser@test.com",
+        display_name="Trusted User",
+        role=UserRole.TRUSTED_USER,
+        approved_edits_count=5
+    )
+    isolated_session.add(user)
+    await isolated_session.commit()
+    await isolated_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
+async def admin_user(isolated_session) -> User:
+    """Create an admin user with ADMIN role."""
+    user = User(
+        google_id="test_admin_user_123",
+        email="admin@test.com",
+        display_name="Admin User",
+        role=UserRole.ADMIN
+    )
+    isolated_session.add(user)
+    await isolated_session.commit()
+    await isolated_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
+async def banned_user(isolated_session) -> User:
+    """Create a banned user."""
+    user = User(
+        google_id="test_banned_user_123",
+        email="banneduser@test.com",
+        display_name="Banned User",
+        role=UserRole.NEW_USER,
+        is_banned=True,
+        banned_reason="Test ban"
+    )
+    isolated_session.add(user)
+    await isolated_session.commit()
+    await isolated_session.refresh(user)
+    return user
+
+
+@pytest.fixture
+def new_user_token(new_user: User) -> str:
+    """Generate JWT token for new user."""
+    return create_access_token({"sub": str(new_user.user_id)})
+
+
+@pytest.fixture
+def trusted_user_token(trusted_user: User) -> str:
+    """Generate JWT token for trusted user."""
+    return create_access_token({"sub": str(trusted_user.user_id)})
+
+
+@pytest.fixture
+def admin_user_token(admin_user: User) -> str:
+    """Generate JWT token for admin user."""
+    return create_access_token({"sub": str(admin_user.user_id)})
+
+
+@pytest.fixture
+def banned_user_token(banned_user: User) -> str:
+    """Generate JWT token for banned user."""
+    return create_access_token({"sub": str(banned_user.user_id)})
