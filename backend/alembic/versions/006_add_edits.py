@@ -16,15 +16,28 @@ depends_on = None
 
 
 def upgrade():
-    # Edit status enum
-    op.execute("""
-        CREATE TYPE edit_status_enum AS ENUM ('PENDING', 'APPROVED', 'REJECTED')
-    """)
-    
-    # Edit type enum
-    op.execute("""
-        CREATE TYPE edit_type_enum AS ENUM ('METADATA', 'MERGE', 'SPLIT', 'DISSOLVE')
-    """)
+    # Safely create enums only if they do not already exist
+    op.execute(
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'edit_status_enum') THEN
+                CREATE TYPE edit_status_enum AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+            END IF;
+        END$$;
+        """
+    )
+
+    op.execute(
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'edit_type_enum') THEN
+                CREATE TYPE edit_type_enum AS ENUM ('METADATA', 'MERGE', 'SPLIT', 'DISSOLVE');
+            END IF;
+        END$$;
+        """
+    )
     
     # Edits table
     op.create_table(
@@ -54,5 +67,5 @@ def downgrade():
     op.drop_index('idx_edits_status', 'edits')
     op.drop_index('idx_edits_user', 'edits')
     op.drop_table('edits')
-    op.execute('DROP TYPE edit_status_enum')
-    op.execute('DROP TYPE edit_type_enum')
+    op.execute("DROP TYPE IF EXISTS edit_status_enum")
+    op.execute("DROP TYPE IF EXISTS edit_type_enum")
