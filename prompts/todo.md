@@ -283,12 +283,12 @@
 ## Phase 7: The Wizard Editor
 
 ### Prompt 23: Metadata Wizard
-- [ ] **Backend**:
-    - [ ] Create `edits` table migration.
-    - [ ] Implement `EditService.create_metadata_edit`.
-- [ ] **Frontend**:
-    - [ ] Create `EditMetadataWizard` modal.
-    - [ ] Implement form validation.
+- [x] **Backend**:
+    - [x] Create `edits` table migration.
+    - [x] Implement `EditService.create_metadata_edit`.
+- [x] **Frontend**:
+    - [x] Create `EditMetadataWizard` modal.
+    - [x] Implement form validation.
 
 ### Prompt 24: Merge Wizard
 - [ ] **Backend**:

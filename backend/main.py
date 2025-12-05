@@ -9,6 +9,7 @@ from app.api.v1.teams import router as teams_router
 from app.api.v1.timeline import router as timeline_router
 from app.api.v1.admin import router as admin_router
 from app.api.v1.auth import router as auth_router
+from app.api.v1.edits import router as edits_router
 from app.core.exceptions import (
     NodeNotFoundException,
     DuplicateEraException,
@@ -63,10 +64,24 @@ app.add_middleware(
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Handle validation errors"""
+    # Convert errors to be JSON serializable
+    errors = []
+    for error in exc.errors():
+        error_dict = {
+            "type": error.get("type"),
+            "loc": error.get("loc"),
+            "msg": error.get("msg"),
+            "input": error.get("input"),
+        }
+        # Convert context values to strings if present
+        if "ctx" in error and error["ctx"]:
+            error_dict["ctx"] = {k: str(v) for k, v in error["ctx"].items()}
+        errors.append(error_dict)
+    
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
-            "detail": exc.errors(),
+            "detail": errors,
             "body": exc.body,
         },
     )
@@ -107,6 +122,7 @@ app.include_router(auth_router)
 app.include_router(teams_router)
 app.include_router(timeline_router)
 app.include_router(admin_router)
+app.include_router(edits_router)
 
 
 @app.get("/")
