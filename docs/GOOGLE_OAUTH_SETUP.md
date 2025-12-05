@@ -1,6 +1,6 @@
 # Google OAuth Setup Guide
 
-This guide will walk you through setting up Google OAuth authentication for the Velograph application.
+This guide will walk you through setting up Google OAuth authentication for the ChainLines application.
 
 ## Prerequisites
 
@@ -14,7 +14,7 @@ This guide will walk you through setting up Google OAuth authentication for the 
 1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
 2. Click on the project dropdown at the top of the page
 3. Click "New Project"
-4. Enter a project name (e.g., "Velograph Auth")
+4. Enter a project name (e.g., "ChainLines Auth")
 5. Click "Create"
 
 ### 2. Enable Google+ API
@@ -30,7 +30,7 @@ This guide will walk you through setting up Google OAuth authentication for the 
 2. Choose "External" user type (unless you have a Google Workspace account)
 3. Click "Create"
 4. Fill in the required information:
-   - **App name**: Velograph
+   - **App name**: ChainLines
    - **User support email**: Your email
    - **Developer contact email**: Your email
 5. Click "Save and Continue"
@@ -48,13 +48,13 @@ This guide will walk you through setting up Google OAuth authentication for the 
 1. Go to "APIs & Services" > "Credentials"
 2. Click "Create Credentials" > "OAuth client ID"
 3. Select "Web application"
-4. Enter a name (e.g., "Velograph Web Client")
+4. Enter a name (e.g., "ChainLines Web Client")
 5. Under "Authorized JavaScript origins", add:
    - `http://localhost:5173` (for local development)
-   - Your production domain (e.g., `https://velograph.com`)
+   - Your production domain (e.g., `https://chainlines.com`)
 6. Under "Authorized redirect URIs", add:
    - `http://localhost:5173/auth/callback` (for local development)
-   - Your production callback URL (e.g., `https://velograph.com/auth/callback`)
+   - Your production callback URL (e.g., `https://chainlines.com/auth/callback`)
 7. Click "Create"
 8. A dialog will appear with your credentials:
    - **Client ID**: Copy this value

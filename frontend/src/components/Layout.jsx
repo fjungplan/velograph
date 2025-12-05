@@ -19,7 +19,7 @@ function Layout() {
       <header className="layout-header">
         <div className="layout-header-content">
           <Link to="/" className="layout-title-link">
-            <h1 className="layout-title">Cycling Team Lineage</h1>
+            <h1 className="layout-title">ChainLines</h1>
           </Link>
           <nav className="layout-nav">
             {isAuthenticated ? (
@@ -38,7 +38,7 @@ function Layout() {
       </main>
 
       <footer className="layout-footer">
-        <p>&copy; {new Date().getFullYear()} Cycling Team Lineage. Open Source Project.</p>
+        <p>&copy; {new Date().getFullYear()} ChainLines. Open Source Project.</p>
       </footer>
     </div>
   );

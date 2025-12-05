@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test data setup script for Velograph moderation queue testing.
+Test data setup script for ChainLines moderation queue testing.
 This script:
 1. Creates a test user (NEW_USER role)
 2. Creates pending edits for that user

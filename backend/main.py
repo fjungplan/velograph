@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Cycling Team Lineage API",
+    title="ChainLines API",
     description="API for tracking professional cycling team history and lineage",
     version="0.1.0",
     lifespan=lifespan
@@ -129,6 +129,6 @@ async def root():
     """Root endpoint"""
     return {
         "status": "ok",
-        "message": "Cycling Team Lineage API",
+        "message": "ChainLines API",
         "version": "0.1.0"
     }

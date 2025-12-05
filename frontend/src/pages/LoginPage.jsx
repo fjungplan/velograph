@@ -25,7 +25,7 @@ export default function LoginPage() {
   return (
     <div className="login-container">
       <div className="login-card">
-        <h1>Cycling Team Lineage</h1>
+        <h1>ChainLines</h1>
         <p>Sign in to contribute to the timeline</p>
 
         <div className="login-button-wrapper">

@@ -1,4 +1,4 @@
-# Cycling Team Lineage - Backend Makefile
+# ChainLines - Backend Makefile
 # Provides convenient shortcuts for common development tasks
 
 .PHONY: help migrate migrate-rollback migrate-create test shell alembic-upgrade-local

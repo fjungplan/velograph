@@ -1,8 +1,8 @@
-# Velograph – User Guide
-### The Cycling Team Lineage Timeline
+# ChainLines – User Guide
+### The ChainLines Timeline
 
 ## Overview
-Velograph visualizes and manages the historical evolution of professional cycling teams, including mergers, splits, and successions, using a structured data model and interactive UI.
+ChainLines visualizes and manages the historical evolution of professional cycling teams, including mergers, splits, and successions, using a structured data model and interactive UI.
 
 ## Key Concepts
 - **Team Node**: Represents a legal/managerial entity (the core of a team across years).

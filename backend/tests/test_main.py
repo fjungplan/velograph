@@ -27,5 +27,5 @@ def test_health_endpoint():
 
 def test_app_startup():
     """Test that the FastAPI app starts successfully"""
-    assert app.title == "Cycling Team Lineage API"
+    assert app.title == "ChainLines API"
     assert app.version == "0.1.0"

@@ -1,5 +1,5 @@
-# Velograph
-### The Cycling Team Lineage Timeline
+# ChainLines
+### The ChainLines Timeline
 
 An open-source visualization of the evolutionary history of professional cycling teams from 1900 to present.
 

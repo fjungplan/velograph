@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     # Application
     DEBUG: bool = True
     API_V1_PREFIX: str = "/api/v1"
-    PROJECT_NAME: str = "Cycling Team Lineage"
+    PROJECT_NAME: str = "ChainLines"
     
     # CORS
     CORS_ORIGINS: List[str] = [
