@@ -1,14 +1,34 @@
 import { Outlet, Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import UserMenu from './UserMenu';
 import './Layout.css';
 
 function Layout() {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="layout">
+        <div className="loading-screen">Loading...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="layout">
       <header className="layout-header">
         <div className="layout-header-content">
-          <h1 className="layout-title">Cycling Team Lineage</h1>
+          <Link to="/" className="layout-title-link">
+            <h1 className="layout-title">Cycling Team Lineage</h1>
+          </Link>
           <nav className="layout-nav">
-            <Link to="/" className="nav-link">Home</Link>
+            {isAuthenticated ? (
+              <UserMenu />
+            ) : (
+              <Link to="/login" className="nav-link login-link">
+                Sign In
+              </Link>
+            )}
           </nav>
         </div>
       </header>
@@ -18,7 +38,7 @@ function Layout() {
       </main>
 
       <footer className="layout-footer">
-        <p>&copy; {new Date().getFullYear()} Cycling Team Lineage. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} Cycling Team Lineage. Open Source Project.</p>
       </footer>
     </div>
   );

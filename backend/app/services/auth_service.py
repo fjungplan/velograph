@@ -19,7 +19,8 @@ class AuthService:
             idinfo = id_token.verify_oauth2_token(
                 token,
                 requests.Request(),
-                settings.GOOGLE_CLIENT_ID
+                settings.GOOGLE_CLIENT_ID,
+                clock_skew_in_seconds=10  # Allow 10 seconds clock skew
             )
             
             if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
@@ -47,8 +48,8 @@ class AuthService:
         
         if user:
             # Update last login
-            user.last_login_at = datetime.now(timezone.utc)
-            user.updated_at = datetime.now(timezone.utc)
+            user.last_login_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            user.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         else:
             # Create new user
             user = User(
@@ -81,7 +82,7 @@ class AuthService:
         
         # Store refresh token in database
         token_hash = hash_token(refresh_token)
-        expires_at = datetime.now(timezone.utc) + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS)
+        expires_at = (datetime.now(timezone.utc) + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS)).replace(tzinfo=None)
         
         db_refresh_token = RefreshToken(
             user_id=user.user_id,
