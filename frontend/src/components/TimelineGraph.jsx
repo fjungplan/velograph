@@ -15,6 +15,10 @@ import { GraphNavigation } from '../utils/graphNavigation';
 import { ViewportManager } from '../utils/virtualization';
 import { PerformanceMonitor } from '../utils/performanceMonitor';
 import { OptimizedRenderer } from '../utils/optimizedRenderer';
+import EditMetadataWizard from './EditMetadataWizard';
+import MergeWizard from './MergeWizard';
+import SplitWizard from './SplitWizard';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function TimelineGraph({ 
   data, 
@@ -38,6 +42,12 @@ export default function TimelineGraph({
   
   const [zoomLevel, setZoomLevel] = useState('OVERVIEW');
   const [tooltip, setTooltip] = useState({ visible: false, content: null, position: null });
+  const [showEditWizard, setShowEditWizard] = useState(false);
+  const [showMergeWizard, setShowMergeWizard] = useState(false);
+  const [showSplitWizard, setShowSplitWizard] = useState(false);
+  const [selectedNode, setSelectedNode] = useState(null);
+  
+  const { user, isAuthenticated } = useAuth();
   
   useEffect(() => {
     // Initialize zoom manager
@@ -371,7 +381,36 @@ export default function TimelineGraph({
 
   const handleNodeClick = (node) => {
     console.log('Clicked node:', node);
-    // TODO: Navigate to team detail page
+    
+    // Only allow edits if user is authenticated and has editor role or higher
+    if (isAuthenticated && (user?.role === 'EDITOR' || user?.role === 'TRUSTED_USER' || user?.role === 'ADMIN')) {
+      setSelectedNode(node);
+      setShowEditWizard(true);
+    } else {
+      // TODO: Navigate to team detail page when that's implemented
+      console.log('View team detail for:', node.id);
+    }
+  };
+  
+  const canUseWizards = () => {
+    return isAuthenticated && (user?.role === 'EDITOR' || user?.role === 'TRUSTED_USER' || user?.role === 'ADMIN');
+  };
+  
+  const handleWizardSuccess = (result) => {
+    console.log('Edit submitted successfully:', result);
+    setShowEditWizard(false);
+    setShowMergeWizard(false);
+    setShowSplitWizard(false);
+    setSelectedNode(null);
+    
+    // Show success message
+    // TODO: Add toast notification
+    if (result.status === 'APPROVED') {
+      alert('Edit applied successfully!');
+      // Could refetch timeline data here to show changes
+    } else {
+      alert('Edit submitted for moderation!');
+    }
   };
 
   const handleNodeHover = (event, node) => {
@@ -420,6 +459,60 @@ export default function TimelineGraph({
         position={tooltip.position}
         visible={tooltip.visible}
       />
+      
+      {/* Wizard Modals */}
+      {showEditWizard && selectedNode && selectedNode.eras && selectedNode.eras.length > 0 && (
+        <EditMetadataWizard
+          era={selectedNode.eras[selectedNode.eras.length - 1]}
+          onClose={() => {
+            setShowEditWizard(false);
+            setSelectedNode(null);
+          }}
+          onSuccess={handleWizardSuccess}
+        />
+      )}
+      
+      {showMergeWizard && selectedNode && (
+        <MergeWizard
+          initialNode={selectedNode}
+          onClose={() => {
+            setShowMergeWizard(false);
+            setSelectedNode(null);
+          }}
+          onSuccess={handleWizardSuccess}
+        />
+      )}
+      
+      {showSplitWizard && selectedNode && (
+        <SplitWizard
+          sourceNode={selectedNode}
+          onClose={() => {
+            setShowSplitWizard(false);
+            setSelectedNode(null);
+          }}
+          onSuccess={handleWizardSuccess}
+        />
+      )}
+      
+      {/* Action buttons for merge/split - only show if user can edit */}
+      {canUseWizards() && (
+        <div className="wizard-actions">
+          <button 
+            className="wizard-action-btn"
+            onClick={() => setShowMergeWizard(true)}
+            title="Create a merge event"
+          >
+            Merge Teams
+          </button>
+          <button 
+            className="wizard-action-btn"
+            onClick={() => setShowSplitWizard(true)}
+            title="Create a split event"
+          >
+            Split Team
+          </button>
+        </div>
+      )}
     </div>
   );
 }

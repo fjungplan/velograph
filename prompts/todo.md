@@ -310,13 +310,15 @@
 ## Phase 8: Moderation System
 
 ### Prompt 26: Moderation Queue
-- [ ] **Backend**:
-    - [ ] Create `GET /moderation/pending` and `POST /moderation/review`.
-    - [ ] Implement `ModerationService` (apply edits on approval).
-- [ ] **Frontend**:
-    - [ ] Create `ModerationQueuePage`.
-    - [ ] Create `EditReviewModal`.
-    - [ ] Display stats (approved/rejected counts).
+- [x] **Backend**:
+    - [x] Create `GET /moderation/pending` and `POST /moderation/review`.
+    - [x] Implement `ModerationService` (apply edits on approval).
+- [x] **Frontend**:
+    - [x] Create `ModerationQueuePage`.
+    - [x] Create `EditReviewModal`.
+    - [x] Display stats (approved/rejected counts).
+
+✅ **Status**: Implemented and merged via PR #29. Complete moderation queue with admin-only access. Backend endpoints for pending edits (with filtering/pagination), review actions (approve/reject with optional notes), and stats dashboard. ModerationService applies approved edits (metadata/merge/split) with logging and user promotion logic (5 approvals → TRUSTED_USER). Frontend ModerationQueuePage with stats bar, filter buttons, edit cards, and comprehensive review modal. All tests passing (76 frontend, 199 backend).
 
 ---
 

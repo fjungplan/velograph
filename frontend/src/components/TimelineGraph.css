@@ -40,11 +40,58 @@
   pointer-events: none;
 }
 
+/* Wizard action buttons */
+.wizard-actions {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 999;
+}
+
+.wizard-action-btn {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+  min-width: 140px;
+}
+
+.wizard-action-btn:hover {
+  background: #45a049;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+.wizard-action-btn:active {
+  transform: translateY(0);
+}
+
 @media (max-width: 768px) {
   .zoom-indicator {
     top: 10px;
     left: 10px;
     font-size: 12px;
     padding: 6px 12px;
+  }
+  
+  .wizard-actions {
+    bottom: 20px;
+    right: 20px;
+    gap: 8px;
+  }
+  
+  .wizard-action-btn {
+    padding: 10px 16px;
+    font-size: 13px;
+    min-width: 120px;
   }
 }
