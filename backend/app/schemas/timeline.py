@@ -9,9 +9,11 @@ class SponsorComposition(BaseModel):
 
 
 class TimelineEra(BaseModel):
+    era_id: str
     year: int
     name: str
     tier: Optional[int] = None
+    uci_code: Optional[str] = None
     sponsors: List[SponsorComposition] = []
 
 

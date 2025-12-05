@@ -28,7 +28,8 @@ export default function TimelineGraph({
   onTierFilterChange,
   initialStartYear = 2020,
   initialEndYear = new Date().getFullYear(),
-  initialTiers = [1, 2, 3]
+  initialTiers = [1, 2, 3],
+  onEditSuccess
 }) {
   const svgRef = useRef(null);
   const containerRef = useRef(null);
@@ -49,6 +50,7 @@ export default function TimelineGraph({
   const [showSplitWizard, setShowSplitWizard] = useState(false);
   const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
   
   const { user, canEdit } = useAuth();
   const navigate = useNavigate();
@@ -476,6 +478,13 @@ export default function TimelineGraph({
     }
   };
   
+  const showToast = (message, type = 'success', duration = 3000) => {
+    setToast({ visible: true, message, type });
+    setTimeout(() => {
+      setToast({ visible: false, message: '', type: 'success' });
+    }, duration);
+  };
+
   const handleWizardSuccess = (result) => {
     console.log('Edit submitted successfully:', result);
     setShowEditWizard(false);
@@ -483,13 +492,15 @@ export default function TimelineGraph({
     setShowSplitWizard(false);
     setSelectedNode(null);
     
-    // Show success message
-    // TODO: Add toast notification
+    // Show toast notification (no browser dialog)
     if (result.status === 'APPROVED') {
-      alert('Edit applied successfully!');
-      // Could refetch timeline data here to show changes
+      showToast('Edit applied successfully!', 'success');
+      // Refetch data to show changes immediately
+      if (onEditSuccess) {
+        onEditSuccess();
+      }
     } else {
-      alert('Edit submitted for moderation!');
+      showToast('Edit submitted for moderation', 'info');
     }
   };
 
@@ -606,6 +617,18 @@ export default function TimelineGraph({
           >
             Split Team
           </button>
+        </div>
+      )}
+      
+      {/* Toast Notification */}
+      {toast.visible && (
+        <div className={`toast toast-${toast.type}`}>
+          <div className="toast-content">
+            {toast.type === 'success' && <span className="toast-icon">✓</span>}
+            {toast.type === 'info' && <span className="toast-icon">ℹ</span>}
+            {toast.type === 'error' && <span className="toast-icon">✕</span>}
+            <span className="toast-message">{toast.message}</span>
+          </div>
         </div>
       )}
     </div>

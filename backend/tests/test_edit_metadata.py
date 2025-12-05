@@ -327,6 +327,7 @@ async def test_manual_override_prevents_scraper_overwrite(db_session: AsyncSessi
     await EditService._apply_metadata_changes(
         db_session,
         era,
+        node,
         {"registered_name": "Manually Updated Team"},
         trusted_user
     )

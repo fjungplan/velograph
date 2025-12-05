@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     ]
 
     # Timeline cache
-    TIMELINE_CACHE_ENABLED: bool = True
+    TIMELINE_CACHE_ENABLED: bool = False
     TIMELINE_CACHE_TTL_SECONDS: int = 300
 
     # Scraper settings

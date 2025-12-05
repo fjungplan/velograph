@@ -64,6 +64,7 @@ function HomePage() {
       initialStartYear={filters.start_year}
       initialEndYear={filters.end_year}
       initialTiers={filters.tier_filter || [1, 2, 3]}
+      onEditSuccess={refetch}
     />
   );
 }
