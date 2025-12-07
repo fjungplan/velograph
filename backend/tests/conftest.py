@@ -15,6 +15,36 @@ from app.models.enums import EventType
 from app.models.user import User, UserRole
 from app.core.security import create_access_token
 import uuid
+import app.db.database as database_module
+
+@pytest_asyncio.fixture
+async def test_engine():
+    """Create a test engine for each test session using SQLite."""
+    test_db_url = "sqlite+aiosqlite:///:memory:"
+    engine = create_async_engine(test_db_url, echo=False, future=True)
+    
+    # Create all tables upfront
+    async with engine.begin() as conn:
+        await conn.execute(text("PRAGMA foreign_keys=ON"))
+        await conn.run_sync(Base.metadata.create_all)
+    
+    # Override the module-level engine so the app uses our test engine
+    original_engine = database_module.engine
+    original_session_maker = database_module.async_session_maker
+    
+    database_module.engine = engine
+    database_module.async_session_maker = async_sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
+    
+    yield engine
+    
+    # Restore original engine
+    database_module.engine = original_engine
+    database_module.async_session_maker = original_session_maker
+    
+    await engine.dispose()
+
 
 @pytest_asyncio.fixture
 async def sample_team_node(isolated_session) -> TeamNode:
@@ -77,33 +107,50 @@ async def complex_lineage_tree(isolated_session) -> dict:
 
 
 @pytest_asyncio.fixture
-async def client() -> AsyncGenerator[AsyncClient, None]:
-    """Async test HTTP client for the FastAPI app (starts lifespan)."""
-    async with AsyncClient(app=app, base_url="http://test") as ac:
-        yield ac
+async def client(isolated_session) -> AsyncGenerator[AsyncClient, None]:
+    """Async test HTTP client with DB dependency overridden to use isolated_session."""
+
+    async def _override_get_db():
+        yield isolated_session
+
+    # Override DB session to use test session
+    app.dependency_overrides[get_db] = _override_get_db
+
+    async def _override_checker(session: AsyncSession):
+        # Always report connected in tests
+        return True
+    
+    app.dependency_overrides[get_checker] = lambda: _override_checker
+    
+    try:
+        async with AsyncClient(app=app, base_url="http://test") as ac:
+            yield ac
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_checker, None)
 
 
 @pytest_asyncio.fixture
-async def isolated_engine():
-    """Provide a fresh async engine per test using in-memory SQLite (no Postgres required)."""
-    test_db_url = "sqlite+aiosqlite:///:memory:"
-    engine = create_async_engine(test_db_url, echo=False, future=True)
-    # Create all tables for models
-    async with engine.begin() as conn:
-        await conn.execute(text("PRAGMA foreign_keys=ON"))
-        await conn.run_sync(Base.metadata.create_all)
-    try:
-        yield engine
-    finally:
-        await engine.dispose()
+async def isolated_engine(test_engine):
+    """Provide the shared test engine for tests."""
+    yield test_engine
 
 
 @pytest_asyncio.fixture
 async def isolated_session(isolated_engine) -> AsyncGenerator[AsyncSession, None]:
-    """Yield an isolated session bound to a fresh engine for DB tests."""
+    """Yield an isolated session bound to the test engine. Clears tables between tests."""
+    # Clear all tables before test
+    async with isolated_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+    
     maker = async_sessionmaker(isolated_engine, class_=AsyncSession, expire_on_commit=False)
     async with maker() as session:
         yield session
+    
+    # Cleanup after test
+    async with isolated_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
 
 
 @pytest_asyncio.fixture
