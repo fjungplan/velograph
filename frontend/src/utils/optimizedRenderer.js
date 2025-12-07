@@ -46,7 +46,7 @@ export class OptimizedRenderer {
     g.selectAll('.node text').style('display', 'none');
     g.selectAll('.node rect').attr('fill', (d) => {
       const sponsors = d?.eras?.[d.eras.length - 1]?.sponsors || [];
-      return sponsors[0]?.color || '#4A90E2';
+      return sponsors[0]?.color || '#5a5a5a';
     });
   }
 
