@@ -826,8 +826,7 @@ export default function TimelineGraph({
       .select('rect')
       .transition()
       .duration(200)
-      .attr('stroke-width', 3)
-      .attr('stroke', '#FFD700'); // Gold highlight
+      .attr('filter', 'url(#underglow)');
   };
 
   const handleNodeHoverEnd = (event) => {
@@ -835,8 +834,7 @@ export default function TimelineGraph({
       .select('rect')
       .transition()
       .duration(200)
-      .attr('stroke-width', 2)
-      .attr('stroke', '#333');
+      .attr('filter', 'url(#drop-shadow)');
   };
 
   return (

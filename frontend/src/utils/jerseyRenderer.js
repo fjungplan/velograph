@@ -47,12 +47,8 @@ export class JerseyRenderer {
     const rect = nodeGroup.append('rect')
       .attr('width', node.width)
       .attr('height', node.height)
-      .attr('rx', 6)
-      .attr('ry', 6)
-      .attr('stroke', '#666')
-      .attr('stroke-width', 1.5)
-      .attr('stroke-linejoin', 'round')
-      .attr('stroke-linecap', 'round')
+      .attr('rx', 0.5)
+      .attr('ry', 0.5)
       .attr('shape-rendering', 'crispEdges');
     if (gradientId) {
       rect.attr('fill', `url(#${gradientId})`);
@@ -78,13 +74,43 @@ export class JerseyRenderer {
     const feMerge = filter.append('feMerge');
     feMerge.append('feMergeNode');
     feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
+
+    // Underglow filter for hover effect - tight glow hugging the shape
+    const glowFilter = defs.append('filter')
+      .attr('id', 'underglow')
+      .attr('height', '200%')
+      .attr('width', '200%')
+      .attr('x', '-50%')
+      .attr('y', '-50%');
+    // Dilate very slightly to create tight glow base
+    glowFilter.append('feMorphology')
+      .attr('in', 'SourceGraphic')
+      .attr('operator', 'dilate')
+      .attr('radius', '0.5')
+      .attr('result', 'expanded');
+    glowFilter.append('feGaussianBlur')
+      .attr('in', 'expanded')
+      .attr('stdDeviation', 3)
+      .attr('result', 'blur');
+    glowFilter.append('feFlood')
+      .attr('flood-color', '#FFD700')
+      .attr('flood-opacity', 0.9)
+      .attr('result', 'color');
+    glowFilter.append('feComposite')
+      .attr('in', 'color')
+      .attr('in2', 'blur')
+      .attr('operator', 'in')
+      .attr('result', 'glow');
+    const glowMerge = glowFilter.append('feMerge');
+    glowMerge.append('feMergeNode').attr('in', 'glow');
+    glowMerge.append('feMergeNode').attr('in', 'SourceGraphic');
   }
 
   static addNodeLabel(nodeGroup, node) {
     const latestEra = node.eras[node.eras.length - 1];
     const name = latestEra.name || 'Unknown Team';
     const displayName = name.length > 25 ? name.substring(0, 22) + '...' : name;
-    nodeGroup.append('text')
+    const teamNameText = nodeGroup.append('text')
       .attr('x', node.width / 2)
       .attr('y', node.height / 2)
       .attr('text-anchor', 'middle')
@@ -92,8 +118,9 @@ export class JerseyRenderer {
       .attr('fill', 'white')
       .attr('font-size', '11px')
       .attr('font-weight', 'bold')
-      .attr('style', 'text-shadow: 1px 1px 2px rgba(0,0,0,0.8)')
       .text(displayName);
+    // Font used: inherits from CSS (typically system default sans-serif or custom from index.css)
+    // font-size: 11px, font-weight: bold
     const yearRange = node.dissolution_year
       ? `${node.founding_year}-${node.dissolution_year}`
       : `${node.founding_year}-`;
@@ -104,7 +131,7 @@ export class JerseyRenderer {
       .attr('dominant-baseline', 'middle')
       .attr('fill', 'white')
       .attr('font-size', '9px')
-      .attr('style', 'text-shadow: 1px 1px 2px rgba(0,0,0,0.8)')
       .text(yearRange);
+    // Year range font: inherits from CSS, font-size: 9px, font-weight: normal (default)
   }
 }
