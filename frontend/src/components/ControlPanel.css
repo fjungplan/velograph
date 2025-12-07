@@ -8,14 +8,10 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .control-section {
-  margin-bottom: 8px;
-}
-
-.control-section:last-of-type {
   margin-bottom: 0;
 }
 
@@ -32,8 +28,8 @@
 
 .year-inputs {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  flex-direction: row;
+  gap: 12px;
 }
 
 .year-inputs label {
@@ -42,6 +38,7 @@
   gap: 4px;
   font-size: 13px;
   color: #cccccc;
+  flex: 1;
 }
 
 .year-inputs input[type="number"] {
@@ -51,6 +48,7 @@
   font-size: 14px;
   background: #2a2a2a;
   color: #ffffff;
+  width: 100%;
 }
 
 .year-inputs input[type="number"]:focus {
@@ -85,8 +83,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 20px;
-  padding-top: 20px;
+  margin-top: 8px;
+  padding-top: 12px;
   border-top: 1px solid #444;
 }
 

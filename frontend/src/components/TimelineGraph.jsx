@@ -28,7 +28,10 @@ export default function TimelineGraph({
   initialStartYear = 2020,
   initialEndYear = new Date().getFullYear(),
   initialTiers = [1, 2, 3],
-  onEditSuccess
+  onEditSuccess,
+  currentStartYear,
+  currentEndYear,
+  filtersVersion = 0
 }) {
   const svgRef = useRef(null);
   const containerRef = useRef(null);
@@ -53,9 +56,15 @@ export default function TimelineGraph({
   const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
+  const [currentFilters, setCurrentFilters] = useState({
+    startYear: currentStartYear || initialStartYear,
+    endYear: currentEndYear || initialEndYear
+  });
   
   const { user, canEdit } = useAuth();
   const navigate = useNavigate();
+  
+  // Note: props-change effect moved below zoomToYearRange definition to avoid TDZ
   
   useEffect(() => {
     // Initialize zoom manager
@@ -91,7 +100,8 @@ export default function TimelineGraph({
     const containerWidth = containerRef.current?.clientWidth || 1;
     const span = layout?.xScale ? layout.xScale(layout.yearRange.max) - layout.xScale(layout.yearRange.min) : 0;
     if (!span || span <= 0) return VISUALIZATION.ZOOM_MIN;
-    return Math.min(1, Math.max(containerWidth / span, 0.05));
+    // Allow zoom to go below 1 if content is wider than container
+    return Math.max(containerWidth / span, 0.05);
   }, []);
 
   // Log performance metrics in development
@@ -193,11 +203,49 @@ export default function TimelineGraph({
   }, []);
   
   const handleZoomReset = useCallback(() => {
+    zoomToYearRange(currentFilters.startYear, currentFilters.endYear);
+  }, [currentFilters]);
+  
+  const zoomToYearRange = useCallback((startYear, endYear) => {
+    if (!currentLayout.current || !svgRef.current || !containerRef.current || !zoomBehavior.current) return;
+    
+    const layout = currentLayout.current;
+    const containerWidth = containerRef.current.clientWidth;
+    
+    const x1 = layout.xScale(startYear);
+    const x2 = layout.xScale(endYear);
+    const yearRangeWidth = Math.max(1, x2 - x1);
+    
+    const padding = 80;
+    const rawScale = (containerWidth - 2 * padding) / yearRangeWidth;
+    const minScale = computeMinScale(layout);
+    const targetScale = Math.min(VISUALIZATION.ZOOM_MAX, Math.max(minScale, rawScale));
+    
+    const centerX = (x1 + x2) / 2;
+    const targetX = containerWidth / 2 - centerX * targetScale;
+    const targetY = 0;
+    
     const svg = d3.select(svgRef.current);
+    const transform = d3.zoomIdentity
+      .translate(targetX, targetY)
+      .scale(targetScale);
+    
     svg.transition()
       .duration(750)
-      .call(zoomBehavior.current.transform, d3.zoomIdentity);
-  }, []);
+      .call(zoomBehavior.current.transform, transform);
+  }, [computeMinScale]);
+
+  // Update filters when props change and trigger zoom (defined after zoomToYearRange to avoid TDZ)
+  useEffect(() => {
+    if (currentStartYear !== undefined && currentEndYear !== undefined) {
+      setCurrentFilters({ startYear: currentStartYear, endYear: currentEndYear });
+      if (currentLayout.current) {
+        setTimeout(() => {
+          zoomToYearRange(currentStartYear, currentEndYear);
+        }, 50);
+      }
+    }
+  }, [currentStartYear, currentEndYear, filtersVersion, zoomToYearRange]);
   
   const getGridInterval = (scale) => {
     // Only years or decades based on zoom level (grid switches earlier)
@@ -286,7 +334,9 @@ export default function TimelineGraph({
     };
     
     const layoutStart = performanceMonitor.current.startTiming('layout');
-    const calculator = new LayoutCalculator(dedupedData, width, height);
+    // Extend the filter range by 1 year to show full span of the end year
+    const filterYearRange = { min: currentFilters.startYear, max: currentFilters.endYear + 1 };
+    const calculator = new LayoutCalculator(dedupedData, width, height, filterYearRange);
     const layout = calculator.calculateLayout();
     performanceMonitor.current.endTiming('layout', layoutStart);
     performanceMonitor.current.metrics.nodeCount = layout.nodes.length;
@@ -309,6 +359,31 @@ export default function TimelineGraph({
     const minScale = computeMinScale(layout);
     zoomBehavior.current?.scaleExtent([minScale, VISUALIZATION.ZOOM_MAX]);
 
+    // Calculate initial transform if this is first render (identity transform)
+    if (currentTransform.current.k === 1 && currentTransform.current.x === 0 && currentTransform.current.y === 0) {
+      const x1 = layout.xScale(currentFilters.startYear);
+      const x2 = layout.xScale(currentFilters.endYear);
+      const yearRangeWidth = Math.max(1, x2 - x1);
+      const padding = 80;
+      const rawScale = (width - 2 * padding) / yearRangeWidth;
+      const minScale = computeMinScale(layout);
+      const targetScale = Math.min(VISUALIZATION.ZOOM_MAX, Math.max(minScale, rawScale));
+      const centerX = (x1 + x2) / 2;
+      const targetX = width / 2 - centerX * targetScale;
+      
+      console.log('🎯 INITIAL TRANSFORM CALC:', {
+        yearRange: [currentFilters.startYear, currentFilters.endYear],
+        x1, x2, yearRangeWidth,
+        containerWidth: width,
+        targetScale,
+        centerX,
+        targetX
+      });
+      
+      currentTransform.current = d3.zoomIdentity.translate(targetX, 0).scale(targetScale);
+    }
+
+    // Use current transform
     const transform = currentTransform.current;
 
     const visibleNodes = viewportManager.current.getVisibleNodes(layout.nodes, transform);
@@ -319,7 +394,8 @@ export default function TimelineGraph({
     svg.selectAll('*').remove();
     svg.attr('width', width).attr('height', height);
 
-    const g = svg.append('g').attr('transform', transform);
+    const g = svg.append('g');
+    // Don't manually set transform - let D3 zoom handle it in setupZoomWithVirtualization
     
     // Add background grid
     renderBackgroundGrid(g, layout);
@@ -337,15 +413,29 @@ export default function TimelineGraph({
     const containerHeight = containerRef.current?.clientHeight || 1;
     const minScale = computeMinScale(layout);
 
-    // Constrain panning to the timeline bounds
-    const padding = 20;
-    const nodes = layout.nodes || [];
-    const hasNodes = nodes.length > 0;
-    const nodeMinX = hasNodes ? Math.min(...nodes.map(n => n.x)) : 0;
-    const nodeMaxX = hasNodes ? Math.max(...nodes.map(n => n.x + n.width)) : containerWidth;
-    const nodeMinY = hasNodes ? Math.min(...nodes.map(n => n.y)) : 0;
-    const nodeMaxY = hasNodes ? Math.max(...nodes.map(n => n.y + n.height)) : containerHeight;
-    const extent = [[nodeMinX - padding, nodeMinY - padding], [nodeMaxX + padding, nodeMaxY + padding]];
+    // Constrain panning: calculate extent that prevents panning outside year bounds
+    // translateExtent is in world coords, so we need to account for scale and pan
+    const span = layout.xScale(layout.yearRange.max) - layout.xScale(layout.yearRange.min);
+    const yearMin = layout.xScale(layout.yearRange.min);
+    const yearMax = layout.xScale(layout.yearRange.max);
+    
+    // Small margins in world coordinates (5px at full zoom out = barely perceptible overshoot)
+    const extent = [
+      [yearMin - 5, -20],
+      [yearMax + 5, containerHeight + 20]
+    ];
+    
+    console.log('🔧 ZOOM SETUP:', {
+      minScale,
+      maxScale: VISUALIZATION.ZOOM_MAX,
+      extent,
+      currentTransform: { k: currentTransform.current.k, x: currentTransform.current.x, y: currentTransform.current.y },
+      containerWidth,
+      containerHeight,
+      span,
+      yearMin,
+      yearMax
+    });
 
     const zoom = d3
       .zoom()
@@ -355,6 +445,7 @@ export default function TimelineGraph({
         return !event.ctrlKey && !event.button;
       })
       .on('zoom', (event) => {
+        console.log('🎯 ZOOM EVENT:', { k: event.transform.k, x: event.transform.x, y: event.transform.y });
         currentTransform.current = event.transform;
         g.attr('transform', event.transform);
 
@@ -381,7 +472,16 @@ export default function TimelineGraph({
         }, 100);
       });
     zoomBehavior.current = zoom;
+    
+    // Initialize zoom behavior and set the current transform
     svg.call(zoom);
+    
+    console.log('📍 BEFORE D3 TRANSFORM:', { k: currentTransform.current.k, x: currentTransform.current.x, y: currentTransform.current.y });
+    
+    // Always apply the current transform to D3's zoom state
+    // This will trigger the zoom event handler which will set g.attr('transform')
+    svg.call(zoom.transform, currentTransform.current);
+    console.log('✅ APPLIED TRANSFORM TO D3');
   };
 
   const updateVirtualization = (layout, transform) => {

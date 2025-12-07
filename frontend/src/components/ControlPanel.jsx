@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import SearchBar from './SearchBar';
 import './ControlPanel.css';
 
@@ -16,10 +16,30 @@ export default function ControlPanel({
   const [startYear, setStartYear] = useState(initialStartYear);
   const [endYear, setEndYear] = useState(initialEndYear);
   const [selectedTiers, setSelectedTiers] = useState(initialTiers);
+
+  // Keep local state in sync when parent updates
+  useEffect(() => {
+    setStartYear(initialStartYear);
+    setEndYear(initialEndYear);
+    setSelectedTiers(initialTiers);
+  }, [initialStartYear, initialEndYear, initialTiers]);
   
   const handleApply = () => {
     onYearRangeChange(startYear, endYear);
     onTierFilterChange(selectedTiers);
+  };
+  
+  const handleReset = () => {
+    // Reset to default values
+    setStartYear(1900);
+    setEndYear(currentYear);
+    setSelectedTiers([1, 2, 3]);
+    // Apply reset filters
+    onYearRangeChange(1900, currentYear);
+    onTierFilterChange([1, 2, 3]);
+    // Clear team selection and reset zoom
+    onTeamSelect?.(null);
+    onZoomReset();
   };
   
   const toggleTier = (tier) => {
@@ -86,7 +106,7 @@ export default function ControlPanel({
       
       <div className="control-actions">
         <button onClick={handleApply}>Apply Filters</button>
-        <button onClick={onZoomReset}>Reset Zoom</button>
+        <button onClick={handleReset}>Reset Filters</button>
       </div>
     </div>
   );

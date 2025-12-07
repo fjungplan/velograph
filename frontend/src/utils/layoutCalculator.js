@@ -4,13 +4,13 @@ import { VISUALIZATION } from '../constants/visualization';
  * Calculate positions for all nodes using Sankey-like layout
  */
 export class LayoutCalculator {
-  constructor(graphData, width, height) {
+  constructor(graphData, width, height, yearRange = null) {
     this.nodes = graphData.nodes;
     this.links = graphData.links;
     this.width = width;
     this.height = height;
     
-    this.yearRange = this.calculateYearRange();
+    this.yearRange = yearRange || this.calculateYearRange();
     this.xScale = this.createXScale();
   }
   
@@ -37,9 +37,10 @@ export class LayoutCalculator {
     const minYear = Math.min(1900, ...allYears);
     const maxYear = Math.max(2040, ...allYears);
     
+    // Add +1 year to show the full span of the final year
     return {
       min: minYear,
-      max: maxYear
+      max: maxYear + 1
     };
   }
   

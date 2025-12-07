@@ -9,6 +9,7 @@ import './HomePage.css';
 function HomePage() {
   const { isMobile } = useResponsive();
   const currentYear = new Date().getFullYear();
+  const [filtersVersion, setFiltersVersion] = useState(0);
   
   const [filters, setFilters] = useState({
     start_year: 1900,
@@ -24,6 +25,7 @@ function HomePage() {
       start_year: startYear,
       end_year: endYear
     }));
+    setFiltersVersion(v => v + 1); // force downstream refresh even if values unchanged
   };
   
   const handleTierFilterChange = (tiers) => {
@@ -61,8 +63,11 @@ function HomePage() {
       data={data} 
       onYearRangeChange={handleYearRangeChange}
       onTierFilterChange={handleTierFilterChange}
+      filtersVersion={filtersVersion}
       initialStartYear={filters.start_year}
       initialEndYear={filters.end_year}
+      currentStartYear={filters.start_year}
+      currentEndYear={filters.end_year}
       initialTiers={filters.tier_filter || [1, 2, 3]}
       onEditSuccess={refetch}
     />
