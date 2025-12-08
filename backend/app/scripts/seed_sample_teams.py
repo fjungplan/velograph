@@ -1,12 +1,33 @@
 import uuid
 import psycopg2
+import os
 from datetime import datetime
+from urllib.parse import urlparse
 
-DB_HOST = "localhost"
-DB_NAME = "cycling_lineage"
-DB_USER = "cycling"
-DB_PASSWORD = "cycling"
-DB_PORT = 5432
+# --- SMART CONFIGURATION ---
+# 1. Try to load settings from the Docker Environment (DATABASE_URL)
+database_url = os.getenv("DATABASE_URL")
+
+if database_url:
+    # Fix for SQLAlchemy format: replace 'postgresql+asyncpg' with just 'postgresql'
+    # so the standard psycopg2 driver can read it.
+    if "+asyncpg" in database_url:
+        database_url = database_url.replace("+asyncpg", "")
+    
+    # Parse the URL to get the details
+    url = urlparse(database_url)
+    DB_HOST = url.hostname
+    DB_NAME = url.path[1:] # Removes the leading slash '/'
+    DB_USER = url.username
+    DB_PASSWORD = url.password
+    DB_PORT = url.port or 5432
+else:
+    # 2. Fallback: Localhost defaults (for running python manually on laptop)
+    DB_HOST = "localhost"
+    DB_NAME = "cycling_lineage"
+    DB_USER = "cycling"
+    DB_PASSWORD = "cycling"
+    DB_PORT = 5432
 
 # Pre-generate UUIDs for teams that will be referenced in lineage events
 TEAM_IDS = {

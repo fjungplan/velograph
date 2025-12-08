@@ -1,11 +1,10 @@
 chainlines.cc {
-    # 1. Frontend: Route root traffic to React container
-    reverse_proxy react_frontend:80
+    # FIX: Use 'frontend' (matches docker-compose service name)
+    reverse_proxy frontend:80
 
-    # 2. Backend: Route API traffic to FastAPI container
-    # The 'handle_path' directive strips '/api' from the request
-    # so FastAPI sees '/timeline' instead of '/api/timeline'
+    # FIX: Use 'backend' (matches docker-compose service name)
+    # 'handle_path' strips the '/api' prefix so FastAPI sees '/v1/...'
     handle_path /api/* {
-        reverse_proxy fastapi_backend:8000
+        reverse_proxy backend:8000
     }
 }
