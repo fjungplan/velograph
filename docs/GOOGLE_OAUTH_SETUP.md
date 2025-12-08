@@ -247,8 +247,8 @@ CORS_ORIGINS=["http://localhost:5173"]
 ### Production
 ```env
 GOOGLE_CLIENT_ID=your-prod-client-id.apps.googleusercontent.com
-GOOGLE_REDIRECT_URI=https://velograph.com/auth/callback
-CORS_ORIGINS=["https://velograph.com"]
+GOOGLE_REDIRECT_URI=https://chainlines.cc/auth/callback
+CORS_ORIGINS=["https://chainlines.cc"]
 JWT_SECRET_KEY=strong-production-secret-32-chars-minimum
 ```
 

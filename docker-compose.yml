@@ -1,50 +1,73 @@
 version: '3.8'
 
 services:
+  # --- The Gatekeeper (Caddy) ---
+  # Handles HTTPS and routes traffic to Frontend vs Backend
+  caddy:
+    image: caddy:alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+
+  # --- Database ---
   postgres:
     image: postgres:15-alpine
     container_name: cycling_postgres
+    restart: always
     environment:
-      POSTGRES_USER: cycling
-      POSTGRES_PASSWORD: cycling
-      POSTGRES_DB: cycling_lineage
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      # Explicitly check the configured database; avoid defaulting to user DB name
-      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\" -h localhost"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # --- Backend API ---
   backend:
     build: ./backend
     container_name: cycling_backend
-    command: sh -c "alembic upgrade head && uvicorn main:app --reload --host 0.0.0.0 --port 8000"
-    volumes:
-      - ./backend:/app
-    ports:
-      - "8000:8000"
+    restart: always
+    expose:
+      - "8000" # Not open to the public, only to Caddy
     environment:
-      DATABASE_URL: postgresql+asyncpg://cycling:cycling@postgres:5432/cycling_lineage
-      DEBUG: "true"
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      # Production settings
+      DEBUG: "false"
+      # We will set these in the .env file on the server
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
     depends_on:
       postgres:
         condition: service_healthy
 
+  # --- Frontend ---
   frontend:
-    build: ./frontend
+    build: 
+      context: ./frontend
+      args:
+        # Passes the URL from your .env to the build process
+        - VITE_API_URL=${VITE_API_URL}
     container_name: cycling_frontend
-    command: npm run dev -- --host
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    ports:
-      - "5173:5173"
-    environment:
-      - VITE_API_URL=http://localhost:8000
+    restart: always
+    expose:
+      - "80"
 
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:

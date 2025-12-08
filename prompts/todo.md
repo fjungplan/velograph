@@ -1,4 +1,4 @@
-# Velograph - Implementation Checklist
+# ChainLines - Implementation Checklist
 ### The Cycling Team Lineage Timeline
 
 ## Phase 0: Foundation

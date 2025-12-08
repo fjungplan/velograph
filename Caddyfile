@@ -1,0 +1,11 @@
+chainlines.cc {
+    # 1. Frontend: Route root traffic to React container
+    reverse_proxy react_frontend:80
+
+    # 2. Backend: Route API traffic to FastAPI container
+    # The 'handle_path' directive strips '/api' from the request
+    # so FastAPI sees '/timeline' instead of '/api/timeline'
+    handle_path /api/* {
+        reverse_proxy fastapi_backend:8000
+    }
+}

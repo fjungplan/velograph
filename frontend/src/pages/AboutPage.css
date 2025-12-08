@@ -47,4 +47,59 @@
   font-size: 15px;
   line-height: 1.6;
   color: #cccccc;
+  margin-bottom: 12px;
+}
+
+.about-container p:last-child {
+  margin-bottom: 0;
+}
+
+.about-container ul {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.about-container ul li {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #cccccc;
+  margin-bottom: 8px;
+}
+
+.about-container a {
+  color: #4A90E2;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.about-container a:hover {
+  color: #6BA8E5;
+  text-decoration: underline;
+}
+
+.about-container strong {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.github-link {
+  margin: 20px 0;
+}
+
+.github-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 20px;
+  background: #24292e;
+  color: #ffffff !important;
+  border-radius: 6px;
+  text-decoration: none !important;
+  font-weight: 600;
+  transition: background 0.2s ease;
+  border: 1px solid #444d56;
+}
+
+.github-button:hover {
+  background: #2f363d;
+  text-decoration: none !important;
 }

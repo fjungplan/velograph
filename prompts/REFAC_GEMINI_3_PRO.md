@@ -1,4 +1,4 @@
-# Velograph Refactor Plan
+# ChainLines Refactor Plan
 
 ## Objectives
 - Stabilize async behavior and eliminate lazy-load triggers in the read API.
