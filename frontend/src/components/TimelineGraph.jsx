@@ -468,6 +468,27 @@ export default function TimelineGraph({
     svg.selectAll('*').remove();
     svg.attr('width', width).attr('height', height);
 
+    // Add gradient definitions for different link styles
+    const defs = svg.append('defs');
+    
+    // Gradient for MERGE connections (multiple sources converging)
+    const mergeGradient = defs.append('linearGradient')
+      .attr('id', 'mergeGradient')
+      .attr('x1', '0%')
+      .attr('y1', '0%')
+      .attr('x2', '100%')
+      .attr('y2', '0%');
+    
+    mergeGradient.append('stop')
+      .attr('offset', '0%')
+      .attr('stop-color', VISUALIZATION.LINK_COLOR_LEGAL)
+      .attr('stop-opacity', 0.6);
+    
+    mergeGradient.append('stop')
+      .attr('offset', '100%')
+      .attr('stop-color', VISUALIZATION.LINK_COLOR_LEGAL)
+      .attr('stop-opacity', 1);
+
     const g = svg.append('g');
     // Apply current transform immediately to avoid initial flash before zoom attaches
     g.attr('transform', currentTransform.current);
@@ -475,8 +496,12 @@ export default function TimelineGraph({
     // Add background grid
     renderBackgroundGrid(g, layout);
     
+    // Render links and nodes first
     renderLinks(g, visibleLinks);
     renderNodes(g, visibleNodes, svg);
+    
+    // Render transition markers LAST so they appear on top
+    renderTransitionMarkers(g, visibleLinks);
 
     renderRulers(layout, transform);
 
@@ -698,10 +723,13 @@ export default function TimelineGraph({
   }, []);
   
   const renderLinks = (g, links) => {
+    // Only render links with paths (curved arrows, not same-swimlane transitions)
+    const linkData = links.filter(d => d.path !== null);
+    
     g.append('g')
       .attr('class', 'links')
       .selectAll('path')
-      .data(links, (d) => d.id || `${d.source}-${d.target}-${d.year || ''}-${d.type || ''}`)
+      .data(linkData, (d) => d.id || `${d.source}-${d.target}-${d.year || ''}-${d.type || ''}`)
       .join('path')
         .attr('data-id', (d, i) => `link-${i}`)
         .attr('d', d => d.path)
@@ -734,6 +762,63 @@ export default function TimelineGraph({
             .attr('stroke-width', VISUALIZATION.LINK_STROKE_WIDTH);
           setTooltip({ visible: false, content: null, position: null });
         });
+  };
+  
+  const renderTransitionMarkers = (g, links) => {
+    // Only render markers for same-swimlane transitions
+    const markerData = links.filter(d => d.sameSwimlane && d.path === null);
+    
+    const markerGroup = g.append('g').attr('class', 'transition-markers');
+    
+    const markers = markerGroup
+      .selectAll('g.transition-marker')
+      .data(markerData, (d) => `marker-${d.source}-${d.target}-${d.year || ''}`)
+      .join('g')
+        .attr('class', 'transition-marker')
+        .style('cursor', 'pointer')
+        .on('mouseenter', (event, d) => {
+          d3.select(event.currentTarget).select('line').attr('stroke-width', 3);
+          d3.select(event.currentTarget).select('circle').attr('r', 5);
+          const content = TooltipBuilder.buildLinkTooltip(d, currentLayout.current?.nodes || []);
+          if (content) {
+            setTooltip({ visible: true, content, position: { x: event.pageX, y: event.pageY } });
+          }
+        })
+        .on('mousemove', (event) => {
+          if (tooltip.visible) {
+            setTooltip(prev => ({ ...prev, position: { x: event.pageX, y: event.pageY } }));
+          }
+        })
+        .on('mouseleave', (event) => {
+          d3.select(event.currentTarget).select('line').attr('stroke-width', 2);
+          d3.select(event.currentTarget).select('circle').attr('r', 3.5);
+          setTooltip({ visible: false, content: null, position: null });
+        });
+
+    // Vertical line marker
+    markers
+      .append('line')
+      .attr('x1', (d) => d.targetX)
+      .attr('y1', (d) => d.targetY - 15)
+      .attr('x2', (d) => d.targetX)
+      .attr('y2', (d) => d.targetY + 15)
+      .attr('stroke', (d) => 
+        d.type === 'SPIRITUAL_SUCCESSION' ? VISUALIZATION.LINK_COLOR_SPIRITUAL : VISUALIZATION.LINK_COLOR_LEGAL
+      )
+      .attr('stroke-width', 2)
+      .attr('stroke-dasharray', (d) => (d.type === 'SPIRITUAL_SUCCESSION' ? '4,2' : '0'));
+
+    // Circle at center
+    markers
+      .append('circle')
+      .attr('cx', (d) => d.targetX)
+      .attr('cy', (d) => d.targetY)
+      .attr('r', 3.5)
+      .attr('fill', (d) => 
+        d.type === 'SPIRITUAL_SUCCESSION' ? VISUALIZATION.LINK_COLOR_SPIRITUAL : VISUALIZATION.LINK_COLOR_LEGAL
+      )
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 1.5);
   };
   
   const renderNodes = (g, nodes, svg) => {
