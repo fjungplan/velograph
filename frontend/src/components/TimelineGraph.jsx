@@ -496,11 +496,11 @@ export default function TimelineGraph({
     // Add background grid
     renderBackgroundGrid(g, layout);
     
-    // Render links and nodes first
-    renderLinks(g, visibleLinks);
+    // Render nodes first, then links (so links appear on top)
     renderNodes(g, visibleNodes, svg);
+    renderLinks(g, visibleLinks);
     
-    // Render transition markers LAST so they appear on top
+    // Render transition markers
     renderTransitionMarkers(g, visibleLinks);
 
     renderRulers(layout, transform);
@@ -609,41 +609,89 @@ export default function TimelineGraph({
     // Update links
     const linkSel = g
       .select('.links')
-      .selectAll('path')
+      .selectAll('g.link-container')
       .data(visibleLinks, (d) => d.id || `${d.source}-${d.target}-${d.year || ''}-${d.type || ''}`);
 
     linkSel
       .join(
-        (enter) =>
-          enter
-            .append('path')
-            .attr('d', (d) => d.path)
+        (enter) => {
+          const grp = enter.append('g').attr('class', 'link-container');
+          
+          // Main Fill Path
+          grp.append('path')
+            .attr('class', 'link-fill')
+            .attr('fill-opacity', 0.25)
+            .attr('stroke', 'none')
+            .style('cursor', 'pointer');
+            
+          // Top Outline (Red Dotted)
+          grp.append('path')
+            .attr('class', 'link-outline-top')
             .attr('fill', 'none')
-            .attr('stroke', (d) =>
-              d.type === 'SPIRITUAL_SUCCESSION' ? VISUALIZATION.LINK_COLOR_SPIRITUAL : VISUALIZATION.LINK_COLOR_LEGAL
-            )
-            .attr('stroke-width', VISUALIZATION.LINK_STROKE_WIDTH)
-            .attr('stroke-dasharray', (d) => (d.type === 'SPIRITUAL_SUCCESSION' ? '5,5' : '0'))
-            .style('cursor', 'pointer')
-            .on('mouseenter', (event, d) => {
-              d3.select(event.currentTarget).attr('stroke-width', VISUALIZATION.LINK_STROKE_WIDTH * 2);
+            .attr('stroke', 'red')
+            .attr('stroke-width', 1.5)
+            .attr('stroke-dasharray', '3,2')
+            .style('pointer-events', 'none');
+
+          // Bottom Outline (Blue Dotted)
+          grp.append('path')
+            .attr('class', 'link-outline-bottom')
+            .attr('fill', 'none')
+            .attr('stroke', 'blue')
+            .attr('stroke-width', 1.5)
+            .attr('stroke-dasharray', '3,2')
+            .style('pointer-events', 'none');
+            
+          // Debug Points Group
+          grp.append('g').attr('class', 'debug-points');
+          
+          return grp;
+        },
+        (update) => update,
+        (exit) => exit.remove()
+      )
+      .each(function(d) {
+        const group = d3.select(this);
+        
+        // Update Fill
+        group.select('.link-fill')
+          .attr('d', d.path)
+          .attr('fill', d.type === 'SPIRITUAL_SUCCESSION' ? VISUALIZATION.LINK_COLOR_SPIRITUAL : VISUALIZATION.LINK_COLOR_LEGAL)
+          .on('mouseenter', (event) => {
+              d3.select(event.currentTarget).attr('fill-opacity', 0.5);
               const content = TooltipBuilder.buildLinkTooltip(d, currentLayout.current?.nodes || []);
               if (content) {
                 setTooltip({ visible: true, content, position: { x: event.pageX, y: event.pageY } });
               }
-            })
-            .on('mousemove', (event) => {
+          })
+          .on('mousemove', (event) => {
               if (tooltip.visible) {
-                setTooltip((prev) => ({ ...prev, position: { x: event.pageX, y: event.pageY } }));
+                setTooltip(prev => ({ ...prev, position: { x: event.pageX, y: event.pageY } }));
               }
-            })
-            .on('mouseleave', (event) => {
-              d3.select(event.currentTarget).attr('stroke-width', VISUALIZATION.LINK_STROKE_WIDTH);
+          })
+          .on('mouseleave', (event) => {
+              d3.select(event.currentTarget).attr('fill-opacity', 0.25);
               setTooltip({ visible: false, content: null, position: null });
-            }),
-        (update) => update,
-        (exit) => exit.remove()
-      );
+          });
+
+        // Update Outlines
+        group.select('.link-outline-top').attr('d', d.topPathD || null);
+        group.select('.link-outline-bottom').attr('d', d.bottomPathD || null);
+        
+        // Update Debug Points
+        const pointsGroup = group.select('.debug-points');
+        pointsGroup.selectAll('*').remove();
+        
+        if (d.debugPoints) {
+           Object.entries(d.debugPoints).forEach(([key, p]) => {
+             const pg = pointsGroup.append('g').attr('transform', `translate(${p.x},${p.y})`);
+             // Smaller and thinner debug visuals
+             pg.append('line').attr('x1', -1.5).attr('y1', -1.5).attr('x2', 1.5).attr('y2', 1.5).attr('stroke', 'yellow').attr('stroke-width', 0.5);
+             pg.append('line').attr('x1', -1.5).attr('y1', 1.5).attr('x2', 1.5).attr('y2', -1.5).attr('stroke', 'yellow').attr('stroke-width', 0.5);
+             pg.append('text').attr('y', -2.5).attr('text-anchor', 'middle').attr('fill', 'yellow').attr('font-size', '5px').text(key);
+           });
+        }
+      });
 
     // Update nodes
     const nodeSel = g
@@ -723,44 +771,79 @@ export default function TimelineGraph({
   }, []);
   
   const renderLinks = (g, links) => {
-    // Only render links with paths (curved arrows, not same-swimlane transitions)
+    // Only render links with paths
     const linkData = links.filter(d => d.path !== null);
     
-    g.append('g')
-      .attr('class', 'links')
-      .selectAll('path')
+    const container = g.append('g').attr('class', 'links');
+    
+    container
+      .selectAll('g.link-container')
       .data(linkData, (d) => d.id || `${d.source}-${d.target}-${d.year || ''}-${d.type || ''}`)
-      .join('path')
-        .attr('data-id', (d, i) => `link-${i}`)
-        .attr('d', d => d.path)
-        .attr('fill', 'none')
-        .attr('stroke', d => 
-          d.type === 'SPIRITUAL_SUCCESSION' 
-            ? VISUALIZATION.LINK_COLOR_SPIRITUAL 
-            : VISUALIZATION.LINK_COLOR_LEGAL
-        )
-        .attr('stroke-width', VISUALIZATION.LINK_STROKE_WIDTH)
-        .attr('stroke-dasharray', d => 
-          d.type === 'SPIRITUAL_SUCCESSION' ? '5,5' : '0'
-        )
-        .style('cursor', 'pointer')
-        .on('mouseenter', (event, d) => {
-          d3.select(event.currentTarget)
-            .attr('stroke-width', VISUALIZATION.LINK_STROKE_WIDTH * 2);
-          const content = TooltipBuilder.buildLinkTooltip(d, currentLayout.current?.nodes || []);
-          if (content) {
-            setTooltip({ visible: true, content, position: { x: event.pageX, y: event.pageY } });
-          }
-        })
-        .on('mousemove', (event) => {
-          if (tooltip.visible) {
-            setTooltip(prev => ({ ...prev, position: { x: event.pageX, y: event.pageY } }));
-          }
-        })
-        .on('mouseleave', (event) => {
-          d3.select(event.currentTarget)
-            .attr('stroke-width', VISUALIZATION.LINK_STROKE_WIDTH);
-          setTooltip({ visible: false, content: null, position: null });
+      .join('g')
+        .attr('class', 'link-container')
+        .each(function(d) {
+            const group = d3.select(this);
+            
+            // Fill
+            group.append('path')
+                .attr('class', 'link-fill')
+                .attr('d', d.path)
+                .attr('fill', d.type === 'SPIRITUAL_SUCCESSION' ? VISUALIZATION.LINK_COLOR_SPIRITUAL : VISUALIZATION.LINK_COLOR_LEGAL)
+                .attr('fill-opacity', 0.25)
+                .attr('stroke', 'none')
+                .style('cursor', 'pointer')
+                .on('mouseenter', (event) => {
+                    d3.select(event.currentTarget).attr('fill-opacity', 0.5);
+                    const content = TooltipBuilder.buildLinkTooltip(d, currentLayout.current?.nodes || []);
+                    if (content) {
+                      setTooltip({ visible: true, content, position: { x: event.pageX, y: event.pageY } });
+                    }
+                })
+                .on('mousemove', (event) => {
+                    if (tooltip.visible) {
+                      setTooltip(prev => ({ ...prev, position: { x: event.pageX, y: event.pageY } }));
+                    }
+                })
+                .on('mouseleave', (event) => {
+                    d3.select(event.currentTarget).attr('fill-opacity', 0.25);
+                    setTooltip({ visible: false, content: null, position: null });
+                });
+
+            // Top Outline (Red Dotted)
+            if (d.topPathD) {
+                group.append('path')
+                    .attr('class', 'link-outline-top')
+                    .attr('d', d.topPathD)
+                    .attr('fill', 'none')
+                    .attr('stroke', 'red')
+                    .attr('stroke-width', 1.5)
+                    .attr('stroke-dasharray', '3,2')
+                    .style('pointer-events', 'none');
+            }
+
+            // Bottom Outline (Blue Dotted)
+            if (d.bottomPathD) {
+                group.append('path')
+                    .attr('class', 'link-outline-bottom')
+                    .attr('d', d.bottomPathD)
+                    .attr('fill', 'none')
+                    .attr('stroke', 'blue')
+                    .attr('stroke-width', 1.5)
+                    .attr('stroke-dasharray', '3,2')
+                    .style('pointer-events', 'none');
+            }
+
+            // Debug Points
+            if (d.debugPoints) {
+                const pointsGroup = group.append('g').attr('class', 'debug-points');
+                Object.entries(d.debugPoints).forEach(([key, p]) => {
+                     const pg = pointsGroup.append('g').attr('transform', `translate(${p.x},${p.y})`);
+                     // Smaller and thinner debug visuals
+                     pg.append('line').attr('x1', -1.5).attr('y1', -1.5).attr('x2', 1.5).attr('y2', 1.5).attr('stroke', 'yellow').attr('stroke-width', 0.5);
+                     pg.append('line').attr('x1', -1.5).attr('y1', 1.5).attr('x2', 1.5).attr('y2', -1.5).attr('stroke', 'yellow').attr('stroke-width', 0.5);
+                     pg.append('text').attr('y', -2.5).attr('text-anchor', 'middle').attr('fill', 'yellow').attr('font-size', '5px').text(key);
+                });
+            }
         });
   };
   

@@ -18,34 +18,12 @@ export class DetailRenderer {
         return d.type === 'SPIRITUAL_SUCCESSION' ? 0.6 : 0.9;
       });
     
-    // Add arrowheads at detail level
-    this.addArrowheads(g, links);
+    // Arrowheads removed for Viscous Connectors
+    // this.addArrowheads(g, links);
   }
   
   static addArrowheads(g, links) {
-    // Define arrow marker
-    const defs = g.select('defs').empty() 
-      ? g.append('defs') 
-      : g.select('defs');
-    
-    defs.selectAll('marker').remove(); // Clear old markers
-    
-    const arrow = defs.append('marker')
-      .attr('id', 'arrowhead')
-      .attr('viewBox', '0 -5 10 10')
-      .attr('refX', 8)
-      .attr('refY', 0)
-      .attr('markerWidth', 6)
-      .attr('markerHeight', 6)
-      .attr('orient', 'auto');
-    
-    arrow.append('path')
-      .attr('d', 'M0,-5L10,0L0,5')
-      .attr('fill', '#333');
-    
-    // Apply arrows to links
-    g.selectAll('.links path')
-      .attr('marker-end', 'url(#arrowhead)');
+    // Deprecated for Viscous Connectors
   }
   
   /**

@@ -627,6 +627,9 @@ export class LayoutCalculator {
       // Check if nodes are on the same swimlane (within 5px tolerance)
       const sameSwimlane = Math.abs(source.y - target.y) < 5;
       
+      // Viscous Connectors Implementation
+      const pathData = this.generateLinkPath(source, target, link, sameSwimlane);
+
       const result = {
         ...link,
         sourceX: source.x + source.width,
@@ -634,7 +637,10 @@ export class LayoutCalculator {
         targetX: target.x,
         targetY: target.y + target.height / 2,
         sameSwimlane,
-        path: this.generateLinkPath(source, target, link, sameSwimlane)
+        path: pathData.d,
+        debugPoints: pathData.debugPoints,
+        topPathD: pathData.topPathD,
+        bottomPathD: pathData.bottomPathD
       };
       
       // Debug log first few links
@@ -652,47 +658,137 @@ export class LayoutCalculator {
   }
   
   generateLinkPath(source, target, link, sameSwimlane) {
-    const sxEnd = source.x + source.width;
-    const syMid = source.y + source.height / 2;
-    const txStart = target.x;
-    const tyMid = target.y + target.height / 2;
-    const minGap = 4;
-
-    // Helper to clamp an x to a node's span
-    const clampToNodeX = (node, x) => Math.min(Math.max(x, node.x), node.x + node.width);
-
-    // Determine event X (year) if available
-    const eventYear = link?.year ?? target.founding_year ?? source.dissolution_year ?? this.yearRange.max;
-    const eventX = this.xScale ? this.xScale(eventYear) : txStart;
-
-    // For same-swimlane transitions, return null (we'll use a marker instead)
+    // Restore logic: same-swimlane transitions use markers (null path)
     if (sameSwimlane && link?.type !== 'MERGE' && link?.type !== 'SPLIT') {
-      return null;
+      return { d: null, debugPoints: null, topPathD: null, bottomPathD: null };
     }
 
-    if (link?.type === 'MERGE' || link?.type === 'SPLIT') {
-      // Mid-life merges/splits: attach at event year to top/bottom of target, avoid backward arrows
-      const anchorX = clampToNodeX(target, eventX);
-      const sourceAnchorX = clampToNodeX(source, Math.max(eventX, source.x));
-      const targetY = source.y < target.y ? target.y : target.y + target.height; // top if source above, else bottom
-      const controlOffset = Math.abs(anchorX - sourceAnchorX) * 0.3;
+    // Viscous Connectors Implementation
+    return this.generateViscousPath(source, target, link);
+  }
 
-      return `M ${sourceAnchorX},${syMid}
-              C ${sourceAnchorX + controlOffset},${syMid}
-                ${anchorX - controlOffset},${targetY}
-                ${anchorX},${targetY}`;
+  generateViscousPath(source, target, link) {
+    // 1. Calculate Construction Points
+    const sxEnd = source.x + source.width;
+    const txStart = target.x;
+
+    // Connector edges must be vertically aligned with the date of the connection.
+    // That means: BOTH the source attachment edge and target attachment edge use the SAME X.
+    // With the user-confirmed "vertical diameters" rule, this also ensures every semicircle
+    // segment has a vertical diameter (p1.x === p2.x).
+    let eventX = null;
+    if (link?.year != null && this.xScale) {
+      eventX = this.xScale(link.year);
     }
 
-    // Default (succession/transfer): enforce forward direction
-    const tx = Math.max(txStart, sxEnd + minGap);
-    const ty = tyMid;
-    const dx = tx - sxEnd;
-    const controlPointOffset = Math.abs(dx) * 0.3;
+    // Fallback: if year is missing, use the midpoint between the two node edges, but still
+    // force both endpoints onto the same vertical line so the arc-diameter rule holds.
+    if (eventX == null) {
+      eventX = (sxEnd + txStart) / 2;
+    }
 
-    return `M ${sxEnd},${syMid}
-            C ${sxEnd + controlPointOffset},${syMid}
-              ${tx - controlPointOffset},${ty}
-              ${tx},${ty}`;
+    // Clamp the attachment X into each node’s horizontal bounds (tiny tolerance), but keep
+    // the two edges aligned by choosing a single clamped value that fits BOTH nodes.
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+    const sourceMinX = source.x - 1;
+    const sourceMaxX = sxEnd + 1;
+    const targetMinX = target.x - 1;
+    const targetMaxX = (target.x + target.width) + 1;
+
+    const sharedMinX = Math.max(sourceMinX, targetMinX);
+    const sharedMaxX = Math.min(sourceMaxX, targetMaxX);
+
+    // Prefer keeping the connector exactly on the event year, but guarantee it stays within
+    // the shared feasible range if one exists.
+    const spineX = (sharedMinX <= sharedMaxX)
+      ? clamp(eventX, sharedMinX, sharedMaxX)
+      : (clamp(eventX, sourceMinX, sourceMaxX) + clamp(eventX, targetMinX, targetMaxX)) / 2;
+     
+    const sy = source.y;
+    const sh = source.height;
+    const ty = target.y;
+    const th = target.height;
+
+    const st = { x: spineX, y: sy };
+    const sb = { x: spineX, y: sy + sh };
+    const tt = { x: spineX, y: ty };
+    const tb = { x: spineX, y: ty + th };
+
+    // Center Points (Waist)
+    const midX = spineX;
+    
+    // Calculate vertical center of the "inner gap"
+    let midY;
+    if (sb.y <= tt.y) { // Source Above Target
+       midY = (sb.y + tt.y) / 2;
+    } else if (tb.y <= st.y) { // Source Below Target
+       midY = (st.y + tb.y) / 2;
+    } else { // Overlap
+       midY = (sy + sh/2 + ty + th/2) / 2;
+    }
+
+    // Waist points - pinched (nearly coincident)
+    // IMPORTANT: spec naming: cb = center bottom, ct = center top.
+    // With SVG Y-down, that means: ct.y < cb.y.
+    let pinch = 2;
+    if (sb.y <= tt.y) {
+      const gap = tt.y - sb.y;
+      // Keep the pinch small and inside the gap, but never exactly 0.
+      pinch = Math.max(0.01, Math.min(2, gap / 4));
+      pinch = Math.min(pinch, Math.max(0.01, gap / 2 - 0.01));
+    } else if (tb.y <= st.y) {
+      const gap = st.y - tb.y;
+      pinch = Math.max(0.01, Math.min(2, gap / 4));
+      pinch = Math.min(pinch, Math.max(0.01, gap / 2 - 0.01));
+    }
+
+    const ct = { x: midX, y: midY - pinch }; // center top
+    const cb = { x: midX, y: midY + pinch }; // center bottom
+    
+    // Save points to link for debug rendering
+    const debugPoints = { st, sb, tt, tb, ct, cb };
+
+    // 2. Generate Arcs Helper
+    // User confirmed: every segment is a perfect semicircle with a VERTICAL diameter.
+    // Therefore, consecutive endpoints must share the same X (we enforce `spineX`).
+    // We choose the sweep flag based on the desired bulge direction.
+    const generateVerticalSemiCircle = (p1, p2, bulge /* 'right' | 'left' */) => {
+      const dy = p2.y - p1.y;
+      const absDy = Math.abs(dy);
+      const R = Math.max(0.01, absDy / 2);
+
+      // Moving down vs up flips which sweep produces a right/left bulge.
+      const movingDown = dy > 0;
+      const sweep = (() => {
+        if (movingDown) {
+          return bulge === 'right' ? 1 : 0;
+        }
+        return bulge === 'right' ? 0 : 1;
+      })();
+
+      return `A ${R} ${R} 0 0 ${sweep} ${p2.x} ${p2.y}`;
+    };
+
+    // Construct boundary arcs
+    // Top outline must be: st -> cb -> tt
+    // Bottom outline must be: tb -> ct -> sb
+    const a1 = generateVerticalSemiCircle(st, cb, 'right'); // D
+    const a2 = generateVerticalSemiCircle(cb, tt, 'left');  // C
+    const a4 = generateVerticalSemiCircle(tb, ct, 'left');  // C
+    const a5 = generateVerticalSemiCircle(ct, sb, 'right'); // D
+
+    const topPath = `${a1} ${a2}`;
+    const bottomPath = `${a4} ${a5}`;
+    
+    // Store sub-paths for outline rendering
+    const topPathD = `M ${st.x},${st.y} ${topPath}`;       // st->cb->tt
+    const bottomPathD = `M ${tb.x},${tb.y} ${bottomPath}`; // tb->ct->sb
+
+    // Full closed loop: fill strictly between the top and bottom outlines,
+    // with straight vertical closures at the node attachment edges.
+    const d = `M ${st.x},${st.y} ${a1} ${a2} L ${tb.x},${tb.y} ${a4} ${a5} L ${st.x},${st.y} Z`;
+    
+    return { d, debugPoints, topPathD, bottomPathD };
   }
 
   /**
