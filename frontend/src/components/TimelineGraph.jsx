@@ -1139,6 +1139,7 @@ export default function TimelineGraph({
       .attr('stroke-width', 1.5);
   };
   
+  
   const renderNodes = (g, nodes, svg) => {
     console.log('renderNodes called with', nodes.length, 'nodes:', nodes.map(n => ({ id: n.id, x: n.x, y: n.y, width: n.width, height: n.height })));
 

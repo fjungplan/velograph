@@ -1277,4 +1277,374 @@ export class LayoutCalculator {
     
     return false;
   }
+
+  /**
+   * Optimize swimlane assignments to minimize connector crossings.
+   * Detects when a connector crosses intermediate nodes that exist during the connection timespan,
+   * and tries swapping Y-shaped branch positions to eliminate crossings.
+   */
+  optimizeCrossings(family, assignments, allNodes) {
+    const nodeMap = new Map(allNodes.map(n => [n.id, n]));
+    
+    // Build links within this family
+    const familyLinks = this.links.filter(link => 
+      family.includes(link.source) && family.includes(link.target)
+    );
+    
+    // Find all split/merge points (nodes with multiple successors/predecessors)
+    const predecessors = new Map();
+    const successors = new Map();
+    
+    familyLinks.forEach(link => {
+      if (!predecessors.has(link.target)) predecessors.set(link.target, []);
+      if (!successors.has(link.source)) successors.set(link.source, []);
+      predecessors.get(link.target).push({ nodeId: link.source, type: link.type, year: link.year });
+      successors.get(link.source).push({ nodeId: link.target, type: link.type, year: link.year });
+    });
+    
+    // Try swapping positions of Y-shaped branches to reduce crossings
+    const optimized = { ...assignments };
+    let improved = true;
+    let iterations = 0;
+    const maxIterations = 10;
+    
+    while (improved && iterations < maxIterations) {
+      improved = false;
+      iterations++;
+      
+      // For each node with multiple successors (splits)
+      for (const [nodeId, succs] of successors.entries()) {
+        if (succs.length < 2) continue;
+        
+        // Get successors in same relative position (Y-pattern branches)
+        const branches = succs.map(s => s.nodeId);
+        const parentLane = optimized[nodeId];
+        
+        // Try all permutations of branch positions
+        const branchLanes = branches.map(b => optimized[b]);
+        const uniqueBranchLanes = [...new Set(branchLanes)];
+        
+        if (uniqueBranchLanes.length < 2) continue; // All in same lane, nothing to swap
+        
+        // Count crossings for current arrangement
+        const currentCrossings = this.countCrossingsForBranches(
+          nodeId, branches, optimized, nodeMap, familyLinks
+        );
+        
+        // Try swapping adjacent pairs
+        for (let i = 0; i < branches.length - 1; i++) {
+          for (let j = i + 1; j < branches.length; j++) {
+            // Create test assignment with swapped lanes
+            const testAssignments = { ...optimized };
+            const temp = testAssignments[branches[i]];
+            testAssignments[branches[i]] = testAssignments[branches[j]];
+            testAssignments[branches[j]] = temp;
+            
+            // VALIDATE: Only accept swap if it doesn't create temporal overlaps
+            if (this.swapCreatesOverlaps(branches[i], branches[j], optimized, testAssignments, nodeMap, family)) {
+              continue; // Skip this swap
+            }
+            
+            const testCrossings = this.countCrossingsForBranches(
+              nodeId, branches, testAssignments, nodeMap, familyLinks
+            );
+            
+            if (testCrossings < currentCrossings) {
+              // Apply the swap
+              optimized[branches[i]] = testAssignments[branches[i]];
+              optimized[branches[j]] = testAssignments[branches[j]];
+              improved = true;
+            }
+          }
+        }
+      }
+      
+      // For each node with multiple predecessors (merges)
+      for (const [nodeId, preds] of predecessors.entries()) {
+        if (preds.length < 2) continue;
+        
+        const branches = preds.map(p => p.nodeId);
+        const targetLane = optimized[nodeId];
+        
+        // Count crossings for current arrangement
+        const currentCrossings = this.countCrossingsForMerges(
+          branches, nodeId, optimized, nodeMap, familyLinks
+        );
+        
+        // Try swapping adjacent pairs
+        for (let i = 0; i < branches.length - 1; i++) {
+          for (let j = i + 1; j < branches.length; j++) {
+            const testAssignments = { ...optimized };
+            const temp = testAssignments[branches[i]];
+            testAssignments[branches[i]] = testAssignments[branches[j]];
+            testAssignments[branches[j]] = temp;
+            
+            // VALIDATE: Only accept swap if it doesn't create temporal overlaps
+            if (this.swapCreatesOverlaps(branches[i], branches[j], optimized, testAssignments, nodeMap, family)) {
+              continue; // Skip this swap
+            }
+            
+            const testCrossings = this.countCrossingsForMerges(
+              branches, nodeId, testAssignments, nodeMap, familyLinks
+            );
+            
+            if (testCrossings < currentCrossings) {
+              optimized[branches[i]] = testAssignments[branches[i]];
+              optimized[branches[j]] = testAssignments[branches[j]];
+              improved = true;
+            }
+          }
+        }
+      }
+    }
+    
+    return optimized;
+  }
+
+  /**
+   * Count connector crossings for split branches.
+   * A crossing occurs when a connector from branch A to another node D crosses lane C,
+   * where C contains a node that exists during the connection timespan.
+   */
+  countCrossingsForBranches(parentId, branches, assignments, nodeMap, familyLinks) {
+    let crossings = 0;
+    
+    // For each branch, check all its outgoing connections
+    branches.forEach(branchId => {
+      const branchNode = nodeMap.get(branchId);
+      const branchLane = assignments[branchId];
+      
+      // Find all links from this branch
+      const outgoingLinks = familyLinks.filter(link => link.source === branchId);
+      
+      outgoingLinks.forEach(link => {
+        const targetNode = nodeMap.get(link.target);
+        const targetLane = assignments[link.target];
+        
+        if (targetLane === branchLane) return; // Same lane, no crossing
+        
+        // Connection goes from branchLane to targetLane
+        const minLane = Math.min(branchLane, targetLane);
+        const maxLane = Math.max(branchLane, targetLane);
+        const connectionYear = link.year || targetNode.founding_year || branchNode.dissolution_year;
+        
+        // Check all intermediate lanes for nodes that exist during connection
+        for (let lane = minLane + 1; lane < maxLane; lane++) {
+          // Find nodes in this lane
+          const nodesInLane = Array.from(nodeMap.values()).filter(n => assignments[n.id] === lane);
+          
+          nodesInLane.forEach(intermediateNode => {
+            // Check if this node exists during the connection timespan
+            const nodeStart = intermediateNode.founding_year;
+            const nodeEnd = intermediateNode.dissolution_year || Infinity;
+            
+            if (connectionYear >= nodeStart && connectionYear <= nodeEnd) {
+              crossings++;
+            }
+          });
+        }
+      });
+    });
+    
+    return crossings;
+  }
+
+  /**
+   * Count connector crossings for merge branches (similar to splits, but reversed).
+   */
+  countCrossingsForMerges(branches, targetId, assignments, nodeMap, familyLinks) {
+    let crossings = 0;
+    
+    branches.forEach(branchId => {
+      const branchNode = nodeMap.get(branchId);
+      const branchLane = assignments[branchId];
+      const targetLane = assignments[targetId];
+      
+      if (targetLane === branchLane) return;
+      
+      // Find the merge link
+      const mergeLink = familyLinks.find(link => link.source === branchId && link.target === targetId);
+      if (!mergeLink) return;
+      
+      const targetNode = nodeMap.get(targetId);
+      const connectionYear = mergeLink.year || targetNode.founding_year || branchNode.dissolution_year;
+      
+      const minLane = Math.min(branchLane, targetLane);
+      const maxLane = Math.max(branchLane, targetLane);
+      
+      for (let lane = minLane + 1; lane < maxLane; lane++) {
+        const nodesInLane = Array.from(nodeMap.values()).filter(n => assignments[n.id] === lane);
+        
+        nodesInLane.forEach(intermediateNode => {
+          const nodeStart = intermediateNode.founding_year;
+          const nodeEnd = intermediateNode.dissolution_year || Infinity;
+          
+          if (connectionYear >= nodeStart && connectionYear <= nodeEnd) {
+            crossings++;
+          }
+        });
+      }
+    });
+    
+    return crossings;
+  }
+
+  /**
+   * Check if swapping two nodes would create temporal overlaps in their new lanes.
+   * Returns true if the swap would create overlaps (meaning we should reject it).
+   */
+  swapCreatesOverlaps(nodeId1, nodeId2, currentAssignments, newAssignments, nodeMap, family) {
+    const node1 = nodeMap.get(nodeId1);
+    const node2 = nodeMap.get(nodeId2);
+    
+    const node1Start = node1.founding_year;
+    const node1End = node1.dissolution_year || Infinity;
+    const node2Start = node2.founding_year;
+    const node2End = node2.dissolution_year || Infinity;
+    
+    const node1NewLane = newAssignments[nodeId1];
+    const node2NewLane = newAssignments[nodeId2];
+    
+    // Check if node1 would overlap with any existing node in its new lane
+    for (const otherId of family) {
+      if (otherId === nodeId1 || otherId === nodeId2) continue;
+      
+      const otherLane = currentAssignments[otherId];
+      
+      // Check node1's new lane
+      if (otherLane === node1NewLane) {
+        const otherNode = nodeMap.get(otherId);
+        const otherStart = otherNode.founding_year;
+        const otherEnd = otherNode.dissolution_year || Infinity;
+        
+        // Check for temporal overlap: (start1 < end2) AND (start2 < end1)
+        if (node1Start < otherEnd && otherStart < node1End) {
+          return true; // Overlap detected
+        }
+      }
+      
+      // Check node2's new lane
+      if (otherLane === node2NewLane) {
+        const otherNode = nodeMap.get(otherId);
+        const otherStart = otherNode.founding_year;
+        const otherEnd = otherNode.dissolution_year || Infinity;
+        
+        // Check for temporal overlap
+        if (node2Start < otherEnd && otherStart < node2End) {
+          return true; // Overlap detected
+        }
+      }
+    }
+    
+    return false; // No overlaps, swap is safe
+  }
+
+  /**
+   * DEPRECATED: No longer needed - we now validate swaps before applying them
+   * Resolve temporal overlaps in swimlanes.
+   * After crossing optimization, nodes in the same lane might have temporal overlaps.
+   * Move overlapping nodes to adjacent lanes.
+   */
+  resolveTemporalOverlaps(family, assignments, allNodes) {
+    const nodeMap = new Map(allNodes.map(n => [n.id, n]));
+    const resolved = { ...assignments };
+    
+    // Group nodes by lane
+    const laneGroups = new Map();
+    family.forEach(nodeId => {
+      const lane = resolved[nodeId];
+      if (!laneGroups.has(lane)) {
+        laneGroups.set(lane, []);
+      }
+      laneGroups.get(lane).push(nodeId);
+    });
+    
+    // For each lane, check for temporal overlaps
+    laneGroups.forEach((nodeIds, lane) => {
+      // Sort by founding year
+      const sortedNodes = nodeIds
+        .map(id => ({ id, node: nodeMap.get(id) }))
+        .sort((a, b) => a.node.founding_year - b.node.founding_year);
+      
+      // Check consecutive pairs for overlap
+      for (let i = 0; i < sortedNodes.length - 1; i++) {
+        const current = sortedNodes[i];
+        const next = sortedNodes[i + 1];
+        
+        const currentEnd = current.node.dissolution_year || Infinity;
+        const nextStart = next.node.founding_year;
+        
+        // If they overlap, move the second one to an adjacent lane
+        if (currentEnd >= nextStart) {
+          // Find an available lane (try above and below current lane)
+          let newLane = null;
+          for (let offset = 1; offset <= 5; offset++) {
+            const testLaneAbove = lane + offset;
+            const testLaneBelow = lane - offset;
+            
+            // Check if this lane has space
+            const nodesInAbove = family.filter(id => resolved[id] === testLaneAbove);
+            const nodesInBelow = family.filter(id => resolved[id] === testLaneBelow);
+            
+            // Check if moving to this lane would create overlap
+            const canUseAbove = !this.hasTemporalOverlapInLane(
+              next.id, testLaneAbove, resolved, nodeMap, family
+            );
+            const canUseBelow = !this.hasTemporalOverlapInLane(
+              next.id, testLaneBelow, resolved, nodeMap, family
+            );
+            
+            if (canUseAbove) {
+              newLane = testLaneAbove;
+              break;
+            } else if (canUseBelow) {
+              newLane = testLaneBelow;
+              break;
+            }
+          }
+          
+          if (newLane !== null) {
+            resolved[next.id] = newLane;
+            // Update the lane group for next iteration
+            const currentLaneNodes = laneGroups.get(lane);
+            const index = currentLaneNodes.indexOf(next.id);
+            if (index > -1) {
+              currentLaneNodes.splice(index, 1);
+            }
+            if (!laneGroups.has(newLane)) {
+              laneGroups.set(newLane, []);
+            }
+            laneGroups.get(newLane).push(next.id);
+          }
+        }
+      }
+    });
+    
+    return resolved;
+  }
+
+  /**
+   * Check if a node would have temporal overlap with existing nodes in a lane
+   */
+  hasTemporalOverlapInLane(nodeId, lane, assignments, nodeMap, family) {
+    const node = nodeMap.get(nodeId);
+    const nodeStart = node.founding_year;
+    const nodeEnd = node.dissolution_year || Infinity;
+    
+    // Find all other nodes in this lane
+    const nodesInLane = family.filter(id => id !== nodeId && assignments[id] === lane);
+    
+    for (const otherId of nodesInLane) {
+      const otherNode = nodeMap.get(otherId);
+      const otherStart = otherNode.founding_year;
+      const otherEnd = otherNode.dissolution_year || Infinity;
+      
+      // Check for overlap: (start1 < end2) AND (start2 < end1)
+      if (nodeStart < otherEnd && otherStart < nodeEnd) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
 }
