@@ -6,46 +6,25 @@ export class DetailRenderer {
    * Render detailed link types when zoomed in
    */
   static renderDetailedLinks(g, links, scale) {
-    g.selectAll('.links path')
+    // IMPORTANT: Viscous connectors have filled blobs + dotted outline paths.
+    // Keep fills fully opaque and avoid changing overall opacity here.
+    g.selectAll('.links path.link-outline-top, .links path.link-outline-bottom')
       .attr('stroke-width', d => {
         const baseWidth = 2;
         // Thicker lines for merges/splits
         const multiplier = (d.type === 'MERGE' || d.type === 'SPLIT') ? 1.5 : 1;
         return baseWidth * multiplier;
-      })
-      .attr('opacity', d => {
-        // Spiritual succession more transparent
-        return d.type === 'SPIRITUAL_SUCCESSION' ? 0.6 : 0.9;
       });
+
+    g.selectAll('.links path.link-fill')
+      .attr('opacity', 1);
     
-    // Add arrowheads at detail level
-    this.addArrowheads(g, links);
+    // Arrowheads removed for Viscous Connectors
+    // this.addArrowheads(g, links);
   }
   
   static addArrowheads(g, links) {
-    // Define arrow marker
-    const defs = g.select('defs').empty() 
-      ? g.append('defs') 
-      : g.select('defs');
-    
-    defs.selectAll('marker').remove(); // Clear old markers
-    
-    const arrow = defs.append('marker')
-      .attr('id', 'arrowhead')
-      .attr('viewBox', '0 -5 10 10')
-      .attr('refX', 8)
-      .attr('refY', 0)
-      .attr('markerWidth', 6)
-      .attr('markerHeight', 6)
-      .attr('orient', 'auto');
-    
-    arrow.append('path')
-      .attr('d', 'M0,-5L10,0L0,5')
-      .attr('fill', '#333');
-    
-    // Apply arrows to links
-    g.selectAll('.links path')
-      .attr('marker-end', 'url(#arrowhead)');
+    // Deprecated for Viscous Connectors
   }
   
   /**

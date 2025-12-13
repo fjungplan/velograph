@@ -55,25 +55,40 @@ export class JerseyRenderer {
     } else {
       rect.attr('fill', '#5a5a5a');
     }
-    rect.attr('filter', 'url(#drop-shadow)');
     return rect;
   }
 
   static createShadowFilter(svg) {
     const defs = svg.select('defs').empty() ? svg.append('defs') : svg.select('defs');
+    defs.select('#drop-shadow').remove();
+    defs.select('#underglow').remove();
+
     const filter = defs.append('filter')
       .attr('id', 'drop-shadow')
-      .attr('height', '130%');
+      .attr('height', '200%')
+      .attr('width', '200%')
+      .attr('x', '-50%')
+      .attr('y', '-50%');
     filter.append('feGaussianBlur')
       .attr('in', 'SourceAlpha')
-      .attr('stdDeviation', 2);
+      .attr('stdDeviation', 2)
+      .attr('result', 'blur');
     filter.append('feOffset')
       .attr('dx', 2)
       .attr('dy', 2)
+      .attr('in', 'blur')
       .attr('result', 'offsetblur');
+    filter.append('feFlood')
+      .attr('flood-color', '#000')
+      .attr('flood-opacity', 0.35)
+      .attr('result', 'shadowColor');
+    filter.append('feComposite')
+      .attr('in', 'shadowColor')
+      .attr('in2', 'offsetblur')
+      .attr('operator', 'in')
+      .attr('result', 'shadow');
     const feMerge = filter.append('feMerge');
-    feMerge.append('feMergeNode');
-    feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
+    feMerge.append('feMergeNode').attr('in', 'shadow');
 
     // Underglow filter for hover effect - tight glow hugging the shape
     const glowFilter = defs.append('filter')

@@ -627,6 +627,9 @@ export class LayoutCalculator {
       // Check if nodes are on the same swimlane (within 5px tolerance)
       const sameSwimlane = Math.abs(source.y - target.y) < 5;
       
+      // Viscous Connectors Implementation
+      const pathData = this.generateLinkPath(source, target, link, sameSwimlane);
+
       const result = {
         ...link,
         sourceX: source.x + source.width,
@@ -634,7 +637,11 @@ export class LayoutCalculator {
         targetX: target.x,
         targetY: target.y + target.height / 2,
         sameSwimlane,
-        path: this.generateLinkPath(source, target, link, sameSwimlane)
+        path: pathData.d,
+        debugPoints: pathData.debugPoints,
+        topPathD: pathData.topPathD,
+        bottomPathD: pathData.bottomPathD,
+        bezierDebugPoints: pathData.bezierDebugPoints
       };
       
       // Debug log first few links
@@ -652,47 +659,623 @@ export class LayoutCalculator {
   }
   
   generateLinkPath(source, target, link, sameSwimlane) {
-    const sxEnd = source.x + source.width;
-    const syMid = source.y + source.height / 2;
-    const txStart = target.x;
-    const tyMid = target.y + target.height / 2;
-    const minGap = 4;
-
-    // Helper to clamp an x to a node's span
-    const clampToNodeX = (node, x) => Math.min(Math.max(x, node.x), node.x + node.width);
-
-    // Determine event X (year) if available
-    const eventYear = link?.year ?? target.founding_year ?? source.dissolution_year ?? this.yearRange.max;
-    const eventX = this.xScale ? this.xScale(eventYear) : txStart;
-
-    // For same-swimlane transitions, return null (we'll use a marker instead)
+    // Restore logic: same-swimlane transitions use markers (null path)
     if (sameSwimlane && link?.type !== 'MERGE' && link?.type !== 'SPLIT') {
-      return null;
+      return { d: null, debugPoints: null, topPathD: null, bottomPathD: null };
     }
 
-    if (link?.type === 'MERGE' || link?.type === 'SPLIT') {
-      // Mid-life merges/splits: attach at event year to top/bottom of target, avoid backward arrows
-      const anchorX = clampToNodeX(target, eventX);
-      const sourceAnchorX = clampToNodeX(source, Math.max(eventX, source.x));
-      const targetY = source.y < target.y ? target.y : target.y + target.height; // top if source above, else bottom
-      const controlOffset = Math.abs(anchorX - sourceAnchorX) * 0.3;
+    // Viscous Connectors Implementation
+    return this.generateViscousPath(source, target, link);
+  }
 
-      return `M ${sourceAnchorX},${syMid}
-              C ${sourceAnchorX + controlOffset},${syMid}
-                ${anchorX - controlOffset},${targetY}
-                ${anchorX},${targetY}`;
+  generateViscousPath(source, target, link) {
+    // 1. Calculate Construction Points
+    const sxEnd = source.x + source.width;
+    const txStart = target.x;
+
+    // Connector edges must be vertically aligned with the date of the connection.
+    // That means: BOTH the source attachment edge and target attachment edge use the SAME X.
+    // With the user-confirmed "vertical diameters" rule, this also ensures every semicircle
+    // segment has a vertical diameter (p1.x === p2.x).
+    let eventX = null;
+    if (link?.year != null && this.xScale) {
+      eventX = this.xScale(link.year);
     }
 
-    // Default (succession/transfer): enforce forward direction
-    const tx = Math.max(txStart, sxEnd + minGap);
-    const ty = tyMid;
-    const dx = tx - sxEnd;
-    const controlPointOffset = Math.abs(dx) * 0.3;
+    // Fallback: if year is missing, use the midpoint between the two node edges, but still
+    // force both endpoints onto the same vertical line so the arc-diameter rule holds.
+    if (eventX == null) {
+      eventX = (sxEnd + txStart) / 2;
+    }
 
-    return `M ${sxEnd},${syMid}
-            C ${sxEnd + controlPointOffset},${syMid}
-              ${tx - controlPointOffset},${ty}
-              ${tx},${ty}`;
+    // Clamp the attachment X into each node’s horizontal bounds (tiny tolerance), but keep
+    // the two edges aligned by choosing a single clamped value that fits BOTH nodes.
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+    const sourceMinX = source.x - 1;
+    const sourceMaxX = sxEnd + 1;
+    const targetMinX = target.x - 1;
+    const targetMaxX = (target.x + target.width) + 1;
+
+    const sharedMinX = Math.max(sourceMinX, targetMinX);
+    const sharedMaxX = Math.min(sourceMaxX, targetMaxX);
+
+    // Prefer keeping the connector exactly on the event year, but guarantee it stays within
+    // the shared feasible range if one exists.
+    const spineX = (sharedMinX <= sharedMaxX)
+      ? clamp(eventX, sharedMinX, sharedMaxX)
+      : (clamp(eventX, sourceMinX, sourceMaxX) + clamp(eventX, targetMinX, targetMaxX)) / 2;
+     
+    const sy = source.y;
+    const sh = source.height;
+    const ty = target.y;
+    const th = target.height;
+
+    const st = { x: spineX, y: sy };
+    const sb = { x: spineX, y: sy + sh };
+    const tt = { x: spineX, y: ty };
+    const tb = { x: spineX, y: ty + th };
+
+    // Center Points (Waist)
+    const midX = spineX;
+    
+    // Calculate vertical center of the "inner gap"
+    let midY;
+    if (sb.y <= tt.y) { // Source Above Target
+       midY = (sb.y + tt.y) / 2;
+    } else if (tb.y <= st.y) { // Source Below Target
+       midY = (st.y + tb.y) / 2;
+    } else { // Overlap
+       midY = (sy + sh/2 + ty + th/2) / 2;
+    }
+
+    // Waist points - pinched (nearly coincident)
+    // IMPORTANT: spec naming: cb = center bottom, ct = center top.
+    // With SVG Y-down, that means: ct.y < cb.y.
+    let pinch = 2;
+    if (sb.y <= tt.y) {
+      const gap = tt.y - sb.y;
+      // Keep the pinch small and inside the gap, but never exactly 0.
+      pinch = Math.max(0.01, Math.min(2, gap / 4));
+      pinch = Math.min(pinch, Math.max(0.01, gap / 2 - 0.01));
+    } else if (tb.y <= st.y) {
+      const gap = st.y - tb.y;
+      pinch = Math.max(0.01, Math.min(2, gap / 4));
+      pinch = Math.min(pinch, Math.max(0.01, gap / 2 - 0.01));
+    }
+
+    const ct = { x: midX, y: midY - pinch }; // center top
+    const cb = { x: midX, y: midY + pinch }; // center bottom
+    
+    // Save points to link for debug rendering
+    const debugPoints = { st, sb, tt, tb, ct, cb };
+    const bezierDebugPoints = [];
+    let bezierPointIndex = 0; // unique ID for stable joins
+
+    // 2. Generate Bézier helpers that mimic the previous semicircle arcs exactly.
+    const waistCenterY = midY;
+    const waistCenter = { x: spineX, y: waistCenterY };
+    let quarterSequenceIndex = 0;
+
+    const generateVerticalSemiCircle = (p1, p2, bulge /* 'right' | 'left' */) => {
+      const dy = p2.y - p1.y;
+      const absDy = Math.abs(dy);
+      if (absDy < 0.1) {
+        return `L ${p2.x} ${p2.y}`;
+      }
+
+      const radius = absDy / 2;
+      const cx = p1.x;
+      const cy = (p1.y + p2.y) / 2;
+
+      const toMath = (pt) => ({ x: pt.x, y: -pt.y });
+      const toSvg = (pt) => ({ x: pt.x, y: -pt.y });
+      const format = (value) => Number(value.toFixed(3));
+
+      const centerMath = toMath({ x: cx, y: cy });
+      const startMath = toMath(p1);
+      const endMath = toMath(p2);
+
+      let startAngle = Math.atan2(startMath.y - centerMath.y, startMath.x - centerMath.x);
+      let endAngle = Math.atan2(endMath.y - centerMath.y, endMath.x - centerMath.x);
+      let delta = endAngle - startAngle;
+      const movingDown = dy > 0;
+      const desiredSign = bulge === 'right'
+        ? (movingDown ? -1 : 1)
+        : (movingDown ? 1 : -1);
+      if (desiredSign > 0 && delta < 0) {
+        delta += Math.PI * 2;
+      } else if (desiredSign < 0 && delta > 0) {
+        delta -= Math.PI * 2;
+      }
+
+      const maxStep = Math.PI / 2;
+      const segments = Math.max(1, Math.ceil(Math.abs(delta) / maxStep));
+      const step = delta / segments;
+      let currentAngle = startAngle;
+      let path = '';
+      let overrideStartMath = null;
+
+      for (let i = 0; i < segments; i++) {
+        const p0IdealMath = {
+          x: centerMath.x + radius * Math.cos(currentAngle),
+          y: centerMath.y + radius * Math.sin(currentAngle)
+        };
+        let p0Math = overrideStartMath ?? p0IdealMath;
+        overrideStartMath = null;
+        const startDeltaX = p0Math.x - p0IdealMath.x;
+        const startDeltaY = p0Math.y - p0IdealMath.y;
+
+        const nextAngle = currentAngle + step;
+        const t = (4 / 3) * Math.tan((nextAngle - currentAngle) / 4);
+
+        const cosCurrent = Math.cos(currentAngle);
+        const sinCurrent = Math.sin(currentAngle);
+        const cosNext = Math.cos(nextAngle);
+        const sinNext = Math.sin(nextAngle);
+
+        let cp1Math = {
+          x: centerMath.x + radius * cosCurrent - t * radius * sinCurrent,
+          y: centerMath.y + radius * sinCurrent + t * radius * cosCurrent
+        };
+        cp1Math = {
+          x: cp1Math.x + startDeltaX,
+          y: cp1Math.y + startDeltaY
+        };
+
+        let p3Math = {
+          x: centerMath.x + radius * cosNext,
+          y: centerMath.y + radius * sinNext
+        };
+        let cp2Math = {
+          x: centerMath.x + radius * cosNext + t * radius * sinNext,
+          y: centerMath.y + radius * sinNext - t * radius * cosNext
+        };
+
+        if (i % 2 === 0) {
+          let p3Screen = toSvg(p3Math);
+          let cp2Screen = toSvg(cp2Math);
+          const dirYSourceScreen = Math.sign(p1.y - waistCenterY);
+          const dirYTargetScreen = Math.sign(p3Screen.y - waistCenterY);
+          const awayDirYScreen = dirYTargetScreen !== 0 ? dirYTargetScreen : (dirYSourceScreen || 1);
+          const shiftYScreen = awayDirYScreen * (radius / 3);
+          const inwardDirXScreen = spineX - p3Screen.x;
+          const shiftXScreen = Math.abs(inwardDirXScreen) < 1e-6 ? 0 : Math.sign(inwardDirXScreen) * ((2 * radius) / 5);
+          p3Screen = {
+            x: p3Screen.x + shiftXScreen,
+            y: p3Screen.y + shiftYScreen
+          };
+          cp2Screen = {
+            x: cp2Screen.x + shiftXScreen,
+            y: cp2Screen.y + shiftYScreen
+          };
+          p3Math = toMath(p3Screen);
+          cp2Math = toMath(cp2Screen);
+        }
+
+        const quarterOrdinal = quarterSequenceIndex++;
+        if (quarterOrdinal % 4 === 0 || quarterOrdinal % 4 === 3) {
+          const pullScreen = radius / 8;
+          const adjustTowardCenter = (pointMath) => {
+            const pointScreen = toSvg(pointMath);
+            const deltaX = waistCenter.x - pointScreen.x;
+            const deltaY = waistCenter.y - pointScreen.y;
+            const shiftX = Math.abs(deltaX) < 1e-6 ? 0 : Math.sign(deltaX) * pullScreen;
+            const shiftY = Math.abs(deltaY) < 1e-6 ? 0 : Math.sign(deltaY) * pullScreen;
+            return toMath({
+              x: pointScreen.x + shiftX,
+              y: pointScreen.y + shiftY
+            });
+          };
+          cp1Math = adjustTowardCenter(cp1Math);
+          cp2Math = adjustTowardCenter(cp2Math);
+        }
+
+        const cp1 = toSvg(cp1Math);
+        const cp2 = toSvg(cp2Math);
+        const p3 = toSvg(p3Math);
+
+        bezierDebugPoints.push({ x: format(cp1.x), y: format(cp1.y), role: 'cp', label: '0', segment: i, index: bezierPointIndex++ });
+        bezierDebugPoints.push({ x: format(cp2.x), y: format(cp2.y), role: 'cp', label: '1', segment: i, index: bezierPointIndex++ });
+        bezierDebugPoints.push({ x: format(p3.x), y: format(p3.y), role: 'anchor', label: '2', segment: i, index: bezierPointIndex++ });
+
+        path += `C ${format(cp1.x)} ${format(cp1.y)} ${format(cp2.x)} ${format(cp2.y)} ${format(p3.x)} ${format(p3.y)} `;
+        currentAngle = nextAngle;
+        overrideStartMath = p3Math;
+      }
+
+      return path.trim();
+    };
+
+    // Construct boundary arcs
+    // Top outline must be: st -> cb -> tt
+    // Bottom outline must be: tb -> ct -> sb
+    const a1 = generateVerticalSemiCircle(st, cb, 'right'); // D
+    const a2 = generateVerticalSemiCircle(cb, tt, 'left');  // C
+    const a4 = generateVerticalSemiCircle(tb, ct, 'left');  // C
+    const a5 = generateVerticalSemiCircle(ct, sb, 'right'); // D
+
+    const topPath = `${a1} ${a2}`;
+    const bottomPath = `${a4} ${a5}`;
+    
+    // Store sub-paths for outline rendering
+    const topPathD = `M ${st.x},${st.y} ${topPath}`;       // st->cb->tt
+    const bottomPathD = `M ${tb.x},${tb.y} ${bottomPath}`; // tb->ct->sb
+
+    // Full closed loop: fill strictly between the top and bottom outlines,
+    // with straight vertical closures at the node attachment edges.
+    const d = `M ${st.x},${st.y} ${a1} ${a2} L ${tb.x},${tb.y} ${a4} ${a5} L ${st.x},${st.y} Z`;
+    
+    return { d, debugPoints, topPathD, bottomPathD, bezierDebugPoints };
+  }
+
+  /**
+   * Optimize swimlane assignments to minimize connector crossings.
+   * Detects when a connector crosses intermediate nodes that exist during the connection timespan,
+   * and tries swapping Y-shaped branch positions to eliminate crossings.
+   */
+  optimizeCrossings(family, assignments, allNodes) {
+    const nodeMap = new Map(allNodes.map(n => [n.id, n]));
+    
+    // Build links within this family
+    const familyLinks = this.links.filter(link => 
+      family.includes(link.source) && family.includes(link.target)
+    );
+    
+    // Find all split/merge points (nodes with multiple successors/predecessors)
+    const predecessors = new Map();
+    const successors = new Map();
+    
+    familyLinks.forEach(link => {
+      if (!predecessors.has(link.target)) predecessors.set(link.target, []);
+      if (!successors.has(link.source)) successors.set(link.source, []);
+      predecessors.get(link.target).push({ nodeId: link.source, type: link.type, year: link.year });
+      successors.get(link.source).push({ nodeId: link.target, type: link.type, year: link.year });
+    });
+    
+    // Try swapping positions of Y-shaped branches to reduce crossings
+    const optimized = { ...assignments };
+    let improved = true;
+    let iterations = 0;
+    const maxIterations = 10;
+    
+    while (improved && iterations < maxIterations) {
+      improved = false;
+      iterations++;
+      
+      // For each node with multiple successors (splits)
+      for (const [nodeId, succs] of successors.entries()) {
+        if (succs.length < 2) continue;
+        
+        // Get successors in same relative position (Y-pattern branches)
+        const branches = succs.map(s => s.nodeId);
+        const parentLane = optimized[nodeId];
+        
+        // Try all permutations of branch positions
+        const branchLanes = branches.map(b => optimized[b]);
+        const uniqueBranchLanes = [...new Set(branchLanes)];
+        
+        if (uniqueBranchLanes.length < 2) continue; // All in same lane, nothing to swap
+        
+        // Count crossings for current arrangement
+        const currentCrossings = this.countCrossingsForBranches(
+          nodeId, branches, optimized, nodeMap, familyLinks
+        );
+        
+        // Try swapping adjacent pairs
+        for (let i = 0; i < branches.length - 1; i++) {
+          for (let j = i + 1; j < branches.length; j++) {
+            // Create test assignment with swapped lanes
+            const testAssignments = { ...optimized };
+            const temp = testAssignments[branches[i]];
+            testAssignments[branches[i]] = testAssignments[branches[j]];
+            testAssignments[branches[j]] = temp;
+            
+            // VALIDATE: Only accept swap if it doesn't create temporal overlaps
+            if (this.swapCreatesOverlaps(branches[i], branches[j], optimized, testAssignments, nodeMap, family)) {
+              continue; // Skip this swap
+            }
+            
+            const testCrossings = this.countCrossingsForBranches(
+              nodeId, branches, testAssignments, nodeMap, familyLinks
+            );
+            
+            if (testCrossings < currentCrossings) {
+              // Apply the swap
+              optimized[branches[i]] = testAssignments[branches[i]];
+              optimized[branches[j]] = testAssignments[branches[j]];
+              improved = true;
+            }
+          }
+        }
+      }
+      
+      // For each node with multiple predecessors (merges)
+      for (const [nodeId, preds] of predecessors.entries()) {
+        if (preds.length < 2) continue;
+        
+        const branches = preds.map(p => p.nodeId);
+        const targetLane = optimized[nodeId];
+        
+        // Count crossings for current arrangement
+        const currentCrossings = this.countCrossingsForMerges(
+          branches, nodeId, optimized, nodeMap, familyLinks
+        );
+        
+        // Try swapping adjacent pairs
+        for (let i = 0; i < branches.length - 1; i++) {
+          for (let j = i + 1; j < branches.length; j++) {
+            const testAssignments = { ...optimized };
+            const temp = testAssignments[branches[i]];
+            testAssignments[branches[i]] = testAssignments[branches[j]];
+            testAssignments[branches[j]] = temp;
+            
+            // VALIDATE: Only accept swap if it doesn't create temporal overlaps
+            if (this.swapCreatesOverlaps(branches[i], branches[j], optimized, testAssignments, nodeMap, family)) {
+              continue; // Skip this swap
+            }
+            
+            const testCrossings = this.countCrossingsForMerges(
+              branches, nodeId, testAssignments, nodeMap, familyLinks
+            );
+            
+            if (testCrossings < currentCrossings) {
+              optimized[branches[i]] = testAssignments[branches[i]];
+              optimized[branches[j]] = testAssignments[branches[j]];
+              improved = true;
+            }
+          }
+        }
+      }
+    }
+    
+    return optimized;
+  }
+
+  /**
+   * Count connector crossings for split branches.
+   * A crossing occurs when a connector from branch A to another node D crosses lane C,
+   * where C contains a node that exists during the connection timespan.
+   */
+  countCrossingsForBranches(parentId, branches, assignments, nodeMap, familyLinks) {
+    let crossings = 0;
+    
+    // For each branch, check all its outgoing connections
+    branches.forEach(branchId => {
+      const branchNode = nodeMap.get(branchId);
+      const branchLane = assignments[branchId];
+      
+      // Find all links from this branch
+      const outgoingLinks = familyLinks.filter(link => link.source === branchId);
+      
+      outgoingLinks.forEach(link => {
+        const targetNode = nodeMap.get(link.target);
+        const targetLane = assignments[link.target];
+        
+        if (targetLane === branchLane) return; // Same lane, no crossing
+        
+        // Connection goes from branchLane to targetLane
+        const minLane = Math.min(branchLane, targetLane);
+        const maxLane = Math.max(branchLane, targetLane);
+        const connectionYear = link.year || targetNode.founding_year || branchNode.dissolution_year;
+        
+        // Check all intermediate lanes for nodes that exist during connection
+        for (let lane = minLane + 1; lane < maxLane; lane++) {
+          // Find nodes in this lane
+          const nodesInLane = Array.from(nodeMap.values()).filter(n => assignments[n.id] === lane);
+          
+          nodesInLane.forEach(intermediateNode => {
+            // Check if this node exists during the connection timespan
+            const nodeStart = intermediateNode.founding_year;
+            const nodeEnd = intermediateNode.dissolution_year || Infinity;
+            
+            if (connectionYear >= nodeStart && connectionYear <= nodeEnd) {
+              crossings++;
+            }
+          });
+        }
+      });
+    });
+    
+    return crossings;
+  }
+
+  /**
+   * Count connector crossings for merge branches (similar to splits, but reversed).
+   */
+  countCrossingsForMerges(branches, targetId, assignments, nodeMap, familyLinks) {
+    let crossings = 0;
+    
+    branches.forEach(branchId => {
+      const branchNode = nodeMap.get(branchId);
+      const branchLane = assignments[branchId];
+      const targetLane = assignments[targetId];
+      
+      if (targetLane === branchLane) return;
+      
+      // Find the merge link
+      const mergeLink = familyLinks.find(link => link.source === branchId && link.target === targetId);
+      if (!mergeLink) return;
+      
+      const targetNode = nodeMap.get(targetId);
+      const connectionYear = mergeLink.year || targetNode.founding_year || branchNode.dissolution_year;
+      
+      const minLane = Math.min(branchLane, targetLane);
+      const maxLane = Math.max(branchLane, targetLane);
+      
+      for (let lane = minLane + 1; lane < maxLane; lane++) {
+        const nodesInLane = Array.from(nodeMap.values()).filter(n => assignments[n.id] === lane);
+        
+        nodesInLane.forEach(intermediateNode => {
+          const nodeStart = intermediateNode.founding_year;
+          const nodeEnd = intermediateNode.dissolution_year || Infinity;
+          
+          if (connectionYear >= nodeStart && connectionYear <= nodeEnd) {
+            crossings++;
+          }
+        });
+      }
+    });
+    
+    return crossings;
+  }
+
+  /**
+   * Check if swapping two nodes would create temporal overlaps in their new lanes.
+   * Returns true if the swap would create overlaps (meaning we should reject it).
+   */
+  swapCreatesOverlaps(nodeId1, nodeId2, currentAssignments, newAssignments, nodeMap, family) {
+    const node1 = nodeMap.get(nodeId1);
+    const node2 = nodeMap.get(nodeId2);
+    
+    const node1Start = node1.founding_year;
+    const node1End = node1.dissolution_year || Infinity;
+    const node2Start = node2.founding_year;
+    const node2End = node2.dissolution_year || Infinity;
+    
+    const node1NewLane = newAssignments[nodeId1];
+    const node2NewLane = newAssignments[nodeId2];
+    
+    // Check if node1 would overlap with any existing node in its new lane
+    for (const otherId of family) {
+      if (otherId === nodeId1 || otherId === nodeId2) continue;
+      
+      const otherLane = currentAssignments[otherId];
+      
+      // Check node1's new lane
+      if (otherLane === node1NewLane) {
+        const otherNode = nodeMap.get(otherId);
+        const otherStart = otherNode.founding_year;
+        const otherEnd = otherNode.dissolution_year || Infinity;
+        
+        // Check for temporal overlap: (start1 < end2) AND (start2 < end1)
+        if (node1Start < otherEnd && otherStart < node1End) {
+          return true; // Overlap detected
+        }
+      }
+      
+      // Check node2's new lane
+      if (otherLane === node2NewLane) {
+        const otherNode = nodeMap.get(otherId);
+        const otherStart = otherNode.founding_year;
+        const otherEnd = otherNode.dissolution_year || Infinity;
+        
+        // Check for temporal overlap
+        if (node2Start < otherEnd && otherStart < node2End) {
+          return true; // Overlap detected
+        }
+      }
+    }
+    
+    return false; // No overlaps, swap is safe
+  }
+
+  /**
+   * DEPRECATED: No longer needed - we now validate swaps before applying them
+   * Resolve temporal overlaps in swimlanes.
+   * After crossing optimization, nodes in the same lane might have temporal overlaps.
+   * Move overlapping nodes to adjacent lanes.
+   */
+  resolveTemporalOverlaps(family, assignments, allNodes) {
+    const nodeMap = new Map(allNodes.map(n => [n.id, n]));
+    const resolved = { ...assignments };
+    
+    // Group nodes by lane
+    const laneGroups = new Map();
+    family.forEach(nodeId => {
+      const lane = resolved[nodeId];
+      if (!laneGroups.has(lane)) {
+        laneGroups.set(lane, []);
+      }
+      laneGroups.get(lane).push(nodeId);
+    });
+    
+    // For each lane, check for temporal overlaps
+    laneGroups.forEach((nodeIds, lane) => {
+      // Sort by founding year
+      const sortedNodes = nodeIds
+        .map(id => ({ id, node: nodeMap.get(id) }))
+        .sort((a, b) => a.node.founding_year - b.node.founding_year);
+      
+      // Check consecutive pairs for overlap
+      for (let i = 0; i < sortedNodes.length - 1; i++) {
+        const current = sortedNodes[i];
+        const next = sortedNodes[i + 1];
+        
+        const currentEnd = current.node.dissolution_year || Infinity;
+        const nextStart = next.node.founding_year;
+        
+        // If they overlap, move the second one to an adjacent lane
+        if (currentEnd >= nextStart) {
+          // Find an available lane (try above and below current lane)
+          let newLane = null;
+          for (let offset = 1; offset <= 5; offset++) {
+            const testLaneAbove = lane + offset;
+            const testLaneBelow = lane - offset;
+            
+            // Check if this lane has space
+            const nodesInAbove = family.filter(id => resolved[id] === testLaneAbove);
+            const nodesInBelow = family.filter(id => resolved[id] === testLaneBelow);
+            
+            // Check if moving to this lane would create overlap
+            const canUseAbove = !this.hasTemporalOverlapInLane(
+              next.id, testLaneAbove, resolved, nodeMap, family
+            );
+            const canUseBelow = !this.hasTemporalOverlapInLane(
+              next.id, testLaneBelow, resolved, nodeMap, family
+            );
+            
+            if (canUseAbove) {
+              newLane = testLaneAbove;
+              break;
+            } else if (canUseBelow) {
+              newLane = testLaneBelow;
+              break;
+            }
+          }
+          
+          if (newLane !== null) {
+            resolved[next.id] = newLane;
+            // Update the lane group for next iteration
+            const currentLaneNodes = laneGroups.get(lane);
+            const index = currentLaneNodes.indexOf(next.id);
+            if (index > -1) {
+              currentLaneNodes.splice(index, 1);
+            }
+            if (!laneGroups.has(newLane)) {
+              laneGroups.set(newLane, []);
+            }
+            laneGroups.get(newLane).push(next.id);
+          }
+        }
+      }
+    });
+    
+    return resolved;
+  }
+
+  /**
+   * Check if a node would have temporal overlap with existing nodes in a lane
+   */
+  hasTemporalOverlapInLane(nodeId, lane, assignments, nodeMap, family) {
+    const node = nodeMap.get(nodeId);
+    const nodeStart = node.founding_year;
+    const nodeEnd = node.dissolution_year || Infinity;
+    
+    // Find all other nodes in this lane
+    const nodesInLane = family.filter(id => id !== nodeId && assignments[id] === lane);
+    
+    for (const otherId of nodesInLane) {
+      const otherNode = nodeMap.get(otherId);
+      const otherStart = otherNode.founding_year;
+      const otherEnd = otherNode.dissolution_year || Infinity;
+      
+      // Check for overlap: (start1 < end2) AND (start2 < end1)
+      if (nodeStart < otherEnd && otherStart < nodeEnd) {
+        return true;
+      }
+    }
+    
+    return false;
   }
 
   /**
